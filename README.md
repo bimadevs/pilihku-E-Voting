@@ -1,36 +1,189 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PilihKu - Sistem E-Voting OSIS
 
-## Getting Started
+PilihKu adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OSIS di sekolah. Dibangun dengan Next.js 14, Supabase, dan Tailwind CSS.
 
-First, run the development server:
+## 🌟 Fitur Utama
 
+### Untuk Pemilih
+- Login dengan NIS
+- Melihat profil lengkap kandidat (foto, visi, misi, program kerja)
+- Melakukan voting dengan konfirmasi
+- Halaman terima kasih setelah voting
+- Tidak bisa voting lebih dari sekali
+
+### Untuk Admin
+- Dashboard admin yang komprehensif
+- Manajemen data kandidat (CRUD)
+- Manajemen data pemilih (CRUD)
+- Import data pemilih via CSV
+- Monitoring hasil voting real-time
+- Export hasil dalam format CSV
+- Cetak laporan hasil pemilihan
+
+## 🛠 Teknologi yang Digunakan
+
+- **Frontend**: Next.js 14 (App Router), React, TypeScript
+- **Styling**: Tailwind CSS, Shadcn UI
+- **Backend**: Supabase (Database, Auth, Storage)
+- **Charts**: Chart.js
+- **Others**: Papa Parse
+
+## 📋 Prasyarat
+
+- Node.js versi 18.0.0 atau lebih tinggi
+- NPM atau Yarn
+- Akun Supabase
+
+## 🚀 Cara Instalasi
+
+1. Clone repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/username/pilihku.git
+cd pilihku
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies
+```bash
+npm install
+# atau
+yarn install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Setup environment variables
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Isi environment variables di .env.local
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-## Learn More
+5. Jalankan aplikasi
+```bash
+npm run dev
+# atau
+yarn dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 💾 Struktur Database
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Tabel `voters`
+- id (uuid, primary key)
+- nis (string, unique)
+- full_name (string)
+- class (string)
+- has_voted (boolean)
+- created_at (timestamp)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Tabel `candidates`
+- id (uuid, primary key)
+- candidate_number (integer)
+- ketua_name (string)
+- wakil_name (string)
+- ketua_class (string)
+- wakil_class (string)
+- visi (text)
+- misi (text)
+- program_kerja (text)
+- ketua_photo_url (string)
+- wakil_photo_url (string)
+- created_at (timestamp)
 
-## Deploy on Vercel
+### Tabel `votes`
+- id (uuid, primary key)
+- voter_id (uuid, foreign key)
+- candidate_id (uuid, foreign key)
+- created_at (timestamp)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📝 Panduan Penggunaan
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Untuk Admin
+
+1. **Login Admin**
+   - Akses halaman `/admin`
+   - Login menggunakan kredensial admin
+
+2. **Mengelola Kandidat**
+   - Buka menu "Kandidat"
+   - Tambah/edit/hapus data kandidat
+   - Upload foto kandidat
+   - Isi visi, misi, dan program kerja
+
+3. **Mengelola Pemilih**
+   - Buka menu "Pemilih"
+   - Tambah pemilih satu per satu
+   - Import data pemilih via CSV
+   - Format CSV: nis,full_name,class
+
+4. **Melihat Hasil**
+   - Buka menu "Hasil"
+   - Lihat statistik real-time
+   - Export hasil ke CSV
+   - Cetak laporan
+
+### Untuk Pemilih
+
+1. **Login**
+   - Masukkan NIS
+   - Sistem akan memverifikasi kesesuaian data
+
+2. **Memilih**
+   - Lihat profil lengkap kandidat
+   - Klik "Pilih" pada kandidat yang diinginkan
+   - Konfirmasi pilihan
+   - Setelah memilih, tidak bisa mengubah pilihan
+
+## 🔒 Keamanan
+
+- Autentikasi berbasis token
+- Row Level Security (RLS) di Supabase
+- Validasi input di frontend dan backend
+- Pencegahan double voting
+- Enkripsi data sensitif
+
+## 📊 Format CSV
+
+### Import Pemilih
+```csv
+nis,full_name,class
+12345,Nama Siswa 1,XII RPL 1
+12346,Nama Siswa 2,XI TKJ 2
+```
+
+### Export Hasil
+```csv
+Statistik Pemilihan OSIS
+Total Pemilih,100
+Sudah Memilih,75
+Belum Memilih,25
+Persentase Partisipasi,75%
+
+Hasil Per Kandidat
+Nomor Urut,Ketua,Wakil,Jumlah Suara,Persentase
+1,Ketua 1,Wakil 1,40,53.3%
+2,Ketua 2,Wakil 2,35,46.7%
+```
+
+## 🤝 Kontribusi
+
+Kontribusi selalu diterima dengan senang hati. Untuk kontribusi besar, silakan buka issue terlebih dahulu untuk mendiskusikan perubahan yang diinginkan.
+
+## 📄 Lisensi
+
+[MIT License](LICENSE)
+
+## 👥 Tim Pengembang
+
+- [Bima Jovanta](https://github.com/bimadevs)
+
+## 📞 Kontak
+
+Untuk pertanyaan dan dukungan, silakan hubungi:
+- Email: bimaj0206@gmail.com
+- Website: https://bimadev.xyz
+
+## 🙏 Ucapan Terima Kasih
+
+Terima kasih kepada semua kontributor dan pengguna yang telah membantu mengembangkan PilihKu.
