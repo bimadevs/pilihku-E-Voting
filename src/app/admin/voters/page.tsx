@@ -54,7 +54,7 @@ export default function VotersPage() {
 
     try {
       const text = await file.text()
-      
+
       Papa.parse<CSVVoter>(text, {
         header: true,
         skipEmptyLines: true,
@@ -102,12 +102,12 @@ export default function VotersPage() {
 
           // Reset file input
           if (fileInputRef.current) fileInputRef.current.value = ''
-          
+
           // Tampilkan hasil import
           toast.success(
             `Import selesai:\n${successCount} berhasil\n${duplicateCount} duplikat\n${errorCount} gagal`
           )
-          
+
           // Refresh data
           fetchVoters()
         },
@@ -188,88 +188,21 @@ export default function VotersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">Kelola Pemilih</h1>
-
-          {/* Import CSV Section */}
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleCSVImport}
-                ref={fileInputRef}
-                className="hidden"
-                id="csv-input"
-                disabled={isImporting}
-              />
-              <label
-                htmlFor="csv-input"
-                className={`
-                  inline-flex items-center px-4 py-2 rounded-lg
-                  ${isImporting 
-                    ? 'bg-gray-300 cursor-not-allowed' 
-                    : 'bg-green-600 hover:bg-green-700 cursor-pointer'}
-                  text-white transition-colors duration-200
-                `}
-              >
-                {isImporting ? (
-                  <>
-                    <span className="animate-spin mr-2">⏳</span>
-                    Mengimpor...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-5 h-5 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                      />
-                    </svg>
-                    Import CSV
-                  </>
-                )}
-              </label>
-            </div>
-
-            {/* Download Template Button */}
-            <button
-              onClick={() => {
-                const csvContent = `nis,full_name,class
-12345,Nama Siswa 1,XII RPL 1
-12346,Nama Siswa 2,XI TKJ 2`
-
-                const blob = new Blob([csvContent], { type: 'text/csv' })
-                const url = window.URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = 'template_pemilih.csv'
-                a.click()
-                window.URL.revokeObjectURL(url)
-              }}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              Download Template
-            </button>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex items-center justify-between mb-12">
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            Kelola Pemilih
+          </h1>
         </div>
 
         {/* Form Tambah Pemilih */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Tambah Pemilih Baru</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-10 transform hover:scale-[1.01] transition-all duration-200">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-800">Tambah Pemilih Baru</h2>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   NIS
                 </label>
                 <input
@@ -279,13 +212,14 @@ export default function VotersPage() {
                     ...prev,
                     nis: e.target.value
                   }))}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full px-1 py-2 border rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
                   required
+                  placeholder="Contoh: 1234567890"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nama Lengkap
                 </label>
                 <input
@@ -295,13 +229,14 @@ export default function VotersPage() {
                     ...prev,
                     full_name: e.target.value
                   }))}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full px-1 py-2 border rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
                   required
+                  placeholder="Contoh: Nama Lengkap"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Kelas
                 </label>
                 <input
@@ -311,8 +246,9 @@ export default function VotersPage() {
                     ...prev,
                     class: e.target.value
                   }))}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full px-1 py-2 border rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
                   required
+                  placeholder="Contoh: XII TJKT"
                 />
               </div>
             </div>
@@ -320,7 +256,7 @@ export default function VotersPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300"
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-4 rounded-xl hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:from-blue-300 disabled:to-blue-400 transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               {loading ? 'Menyimpan...' : 'Tambah Pemilih'}
             </button>
@@ -328,37 +264,37 @@ export default function VotersPage() {
         </div>
 
         {/* Daftar Pemilih */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     NIS
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Nama
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Kelas
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Aksi
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {voters.map((voter) => (
-                  <tr key={voter.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">{voter.nis}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{voter.full_name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{voter.class}</td>
+                  <tr key={voter.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{voter.nis}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{voter.full_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{voter.class}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium
-                        ${voter.has_voted 
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium
+                        ${voter.has_voted
                           ? 'bg-green-100 text-green-800'
                           : 'bg-yellow-100 text-yellow-800'
                         }`}
@@ -369,7 +305,7 @@ export default function VotersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => handleDelete(voter.id)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 transition-colors duration-200"
                       >
                         Hapus
                       </button>

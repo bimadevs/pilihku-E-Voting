@@ -3,10 +3,10 @@
 import { useState, useEffect, ReactNode } from 'react'
 import { supabaseClient } from '@/lib/auth'
 import Image from 'next/image'
-import { LoadingSpinner } from '@/components/loading-spinner'
-import { ConfirmVoteModal } from '@/components/confirm-vote-modal'
-import { VotingHeader } from '@/components/voting-header'
-import { CandidateCard } from '@/components/candidate-card'
+import { LoadingSpinner } from '@/app/components/loading-spinner'
+import { ConfirmVoteModal } from '@/app/components/confirm-vote-modal'
+import { VotingHeader } from '@/app/components/voting-header'
+import { CandidateCard } from '@/app/components/candidate-card'
 import { toast } from 'react-hot-toast'
 
 interface Candidate {
@@ -158,7 +158,7 @@ export default function VotePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-28 mt-10">
           {candidates.map((candidate) => (
             <div
               key={candidate.id}

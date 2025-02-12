@@ -20,10 +20,10 @@ export default function VoteSuccess() {
             Suara Anda telah berhasil direkam. Terima kasih telah berpartisipasi dalam pemilihan.
           </p>
           <Link
-            href="/auth/login"
+            href="/"
             className="inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
           >
-            Kembali ke Halaman Login
+            Kembali ke Halaman Utama
           </Link>
         </div>
       </div>

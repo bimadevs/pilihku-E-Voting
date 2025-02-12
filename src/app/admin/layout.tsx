@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 
+
 export default function AdminLayout({
   children,
 }: {
@@ -16,6 +17,8 @@ export default function AdminLayout({
     { name: 'Pemilih', href: '/admin/voters' },
     { name: 'Hasil', href: '/admin/results' },
   ]
+
+
 
   return (
     <div className="min-h-screen bg-gray-100">

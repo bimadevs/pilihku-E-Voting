@@ -217,16 +217,18 @@ export default function ResultsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Header dengan tombol aksi */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Hasil Pemilihan</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12">
+      <div className="max-w-7xl mx-auto px-6">
+        {/* Header dengan efek gradient */}
+        <div className="flex justify-between items-center mb-12">
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            Hasil Pemilihan
+          </h1>
           
           <div className="flex space-x-4">
             <button
               onClick={handleDownloadCSV}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               <svg
                 className="w-5 h-5 mr-2"
@@ -243,53 +245,63 @@ export default function ResultsPage() {
               </svg>
               Download CSV
             </button>
-            {/* <button
-              onClick={(e) => handlePrint()}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                />
-              </svg>
-              Cetak
-            </button> */}
           </div>
         </div>
 
         {/* Konten yang bisa di-print */}
-        <div ref={printRef} className="space-y-8">
-          {/* Statistik Utama */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-600 mb-2">Total Pemilih</h3>
-              <p className="text-3xl font-bold">{stats.totalVoters}</p>
+        <div ref={printRef} className="space-y-10">
+          {/* Statistik Utama dengan Card Modern */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-white rounded-2xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-200">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-blue-100 rounded-xl">
+                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-600">Total Pemilih</h3>
+                  <p className="text-4xl font-bold text-blue-600 mt-2">{stats.totalVoters}</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-600 mb-2">Sudah Memilih</h3>
-              <p className="text-3xl font-bold text-green-600">{stats.votedCount}</p>
-              <p className="text-sm text-gray-500">
-                {stats.votingPercentage.toFixed(1)}% partisipasi
-              </p>
+            
+            <div className="bg-white rounded-2xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-200">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-green-100 rounded-xl">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-600">Sudah Memilih</h3>
+                  <p className="text-4xl font-bold text-green-600 mt-2">{stats.votedCount}</p>
+                  <p className="text-sm font-medium text-green-500 mt-1">
+                    {stats.votingPercentage.toFixed(1)}% partisipasi
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-600 mb-2">Belum Memilih</h3>
-              <p className="text-3xl font-bold text-orange-600">{stats.notVotedCount}</p>
+
+            <div className="bg-white rounded-2xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-200">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-orange-100 rounded-xl">
+                  <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-600">Belum Memilih</h3>
+                  <p className="text-4xl font-bold text-orange-600 mt-2">{stats.notVotedCount}</p>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Grafik */}
+          {/* Grafik dengan Card Modern */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium mb-4">Perolehan Suara</h3>
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <h3 className="text-xl font-semibold mb-6 text-gray-800">Perolehan Suara</h3>
               <Bar
                 data={barChartData}
                 options={{
@@ -299,69 +311,104 @@ export default function ResultsPage() {
                       display: false,
                     },
                   },
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      grid: {
+                        display: false
+                      }
+                    },
+                    x: {
+                      grid: {
+                        display: false
+                      }
+                    }
+                  }
                 }}
               />
             </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium mb-4">Partisipasi Pemilih</h3>
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <h3 className="text-xl font-semibold mb-6 text-gray-800">Partisipasi Pemilih</h3>
               <Doughnut
-                data={doughnutData}
+                data={{
+                  ...doughnutData,
+                  datasets: [{
+                    ...doughnutData.datasets[0],
+                    backgroundColor: ['#10B981', '#FB923C']
+                  }]
+                }}
                 options={{
                   responsive: true,
                   plugins: {
                     legend: {
                       position: 'bottom',
-                    },
-                  },
+                      labels: {
+                        padding: 20,
+                        font: {
+                          size: 12
+                        }
+                      }
+                    }
+                  }
                 }}
               />
             </div>
           </div>
 
-          {/* Tabel Detail */}
-          <div className="bg-white rounded-lg shadow overflow-hidden print:shadow-none">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nomor Paslon
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ketua
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Wakil
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Jumlah Suara
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Persentase
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {stats.candidateResults.map((result) => (
-                  <tr key={result.candidateNumber}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      Paslon {result.candidateNumber}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {result.ketuaName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {result.wakilName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {result.voteCount}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {result.percentage.toFixed(1)}%
-                    </td>
+          {/* Tabel Detail Modern */}
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-xl font-semibold text-gray-800">Detail Hasil Pemilihan</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Nomor Paslon
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ketua
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Wakil
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Jumlah Suara
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Persentase
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {stats.candidateResults.map((result) => (
+                    <tr key={result.candidateNumber} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                        Paslon {result.candidateNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                        {result.ketuaName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                        {result.wakilName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-blue-600">
+                        {result.voteCount}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                            <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${result.percentage}%` }}></div>
+                          </div>
+                          <span className="text-gray-700">{result.percentage.toFixed(1)}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Watermark untuk print */}
