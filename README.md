@@ -1,6 +1,6 @@
 # PilihKu - Sistem E-Voting OSIS
 
-PilihKu adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OSIS di sekolah. Dibangun dengan Next.js 14, Supabase, dan Tailwind CSS.
+PilihKu adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OSIS di sekolah. Dibangun dengan Next.js 14, Supabase, Tailwind CSS, dan berbagai teknologi modern lainnya.
 
 ## 🌟 Fitur Utama
 
@@ -10,9 +10,10 @@ PilihKu adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OS
 - Melakukan voting dengan konfirmasi
 - Halaman terima kasih setelah voting
 - Tidak bisa voting lebih dari sekali
+- Tampilan responsif untuk mobile dan desktop
 
 ### Untuk Admin
-- Dashboard admin yang komprehensif
+- Dashboard admin yang komprehensif dengan statistik real-time
 - Manajemen data kandidat (CRUD)
 - Manajemen data pemilih (CRUD)
 - Import data pemilih via CSV
@@ -22,11 +23,23 @@ PilihKu adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OS
 
 ## 🛠 Teknologi yang Digunakan
 
-- **Frontend**: Next.js 14 (App Router), React, TypeScript
-- **Styling**: Tailwind CSS, Shadcn UI
-- **Backend**: Supabase (Database, Auth, Storage)
-- **Charts**: Chart.js
-- **Others**: Papa Parse
+- **Frontend**:
+  - Next.js 14 (App Router)
+  - React & TypeScript
+  - Tailwind CSS
+  - Framer Motion (animasi)
+  - React Icons
+
+- **Backend & Database**:
+  - Supabase (Database, Auth, Storage)
+  - Row Level Security (RLS)
+
+- **Visualisasi Data**:
+  - Chart.js
+
+- **Utilitas**:
+  - Papa Parse (CSV parsing)
+
 
 ## 📋 Prasyarat
 
@@ -75,6 +88,7 @@ yarn dev
 - full_name (string)
 - class (string)
 - has_voted (boolean)
+- selected_candidate (uuid, foreign key)
 - created_at (timestamp)
 
 ### Tabel `candidates`
@@ -142,6 +156,7 @@ yarn dev
 - Validasi input di frontend dan backend
 - Pencegahan double voting
 - Enkripsi data sensitif
+- Session management
 
 ## 📊 Format CSV
 

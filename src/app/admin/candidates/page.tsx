@@ -222,246 +222,269 @@ export default function CandidatesPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12">
-      <div className="max-w-7xl mx-auto px-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 sm:py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-12">
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            Kelola Kandidat
-          </h1>
-        </div>
+        <h1 className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-6 sm:mb-12">
+          Kelola Data Kandidat
+        </h1>
 
         {/* Form Tambah Kandidat */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-10 transform hover:scale-[1.01] transition-all duration-200">
-          <h2 className="text-2xl font-semibold mb-8 text-gray-800">Tambah Kandidat Baru</h2>
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Nomor Urut */}
-            <div className="w-full md:w-1/4">
-              <label className="block text-lg font-medium text-gray-700 mb-2">
-                Nomor Urut Pasangan
-              </label>
-              <input
-                type="number"
-                value={formData.candidate_number}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  candidate_number: e.target.value
-                }))}
-                className="w-full border px-1 py-2 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                required
-                placeholder="Contoh: 1"
-              />
-            </div>
+        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-8 mb-6">
+          <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800">
+            Tambah Kandidat Baru
+          </h2>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Grid untuk input fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Nomor Urut */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nomor Urut
+                </label>
+                <input
+                  type="number"
+                  name="candidate_number"
+                  value={formData.candidate_number}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    candidate_number: e.target.value
+                  }))}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="1"
+                />
+              </div>
 
-            {/* Info Kandidat */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Ketua */}
-              <div className="bg-blue-50 p-6 rounded-xl space-y-4">
-                <h3 className="text-lg font-semibold text-blue-900">Data Calon Ketua</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nama Lengkap
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.ketua_name}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        ketua_name: e.target.value
-                      }))}
-                      className="w-full px-1 py-2 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Kelas
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.ketua_class}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        ketua_class: e.target.value
-                      }))}
-                      className="w-full px-1 py-2 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Foto
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        ketua_photo: e.target.files ? e.target.files[0] : null
-                      }))}
-                      className="w-full  text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 
-                      file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 
-                      transition-all duration-200"
-                    />
-                  </div>
+              {/* Spacer untuk alignment */}
+              <div className="hidden md:block"></div>
+
+              {/* Ketua Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-800">Data Calon Ketua</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nama Lengkap
+                  </label>
+                  <input
+                    type="text"
+                    name="ketua_name"
+                    value={formData.ketua_name}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      ketua_name: e.target.value
+                    }))}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Kelas
+                  </label>
+                  <input
+                    type="text"
+                    name="ketua_class"
+                    value={formData.ketua_class}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      ketua_class: e.target.value
+                    }))}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Foto
+                  </label>
+                  <input
+                    type="file"
+                    name="ketua_photo"
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      ketua_photo: e.target.files ? e.target.files[0] : null
+                    }))}
+                    accept="image/*"
+                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 
+                             file:rounded-xl file:border-0 file:text-sm file:font-semibold
+                             file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
                 </div>
               </div>
 
-              {/* Wakil */}
-              <div className="bg-purple-50 p-6 rounded-xl space-y-4">
-                <h3 className="text-lg font-semibold text-purple-900">Data Calon Wakil</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nama Lengkap
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.wakil_name}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        wakil_name: e.target.value
-                      }))}
-                      className="w-full px-1 py-2 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Kelas
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.wakil_class}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        wakil_class: e.target.value
-                      }))}
-                      className="w-full px-1 py-2 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Foto
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        wakil_photo: e.target.files ? e.target.files[0] : null
-                      }))}
-                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 
-                      file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100
-                      transition-all duration-200"
-                    />
-                  </div>
+              {/* Wakil Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-800">Data Calon Wakil</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nama Lengkap
+                  </label>
+                  <input
+                    type="text"
+                    name="wakil_name"
+                    value={formData.wakil_name}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      wakil_name: e.target.value
+                    }))}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Kelas
+                  </label>
+                  <input
+                    type="text"
+                    name="wakil_class"
+                    value={formData.wakil_class}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      wakil_class: e.target.value
+                    }))}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Foto
+                  </label>
+                  <input
+                    type="file"
+                    name="wakil_photo"
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      wakil_photo: e.target.files ? e.target.files[0] : null
+                    }))}
+                    accept="image/*"
+                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 
+                             file:rounded-xl file:border-0 file:text-sm file:font-semibold
+                             file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Visi, Misi, dan Program Kerja */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl">
-                <label className="block text-sm font-medium text-blue-900 mb-2">
+            {/* Visi, Misi, Program Kerja */}
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Visi
                 </label>
                 <textarea
+                  name="visi"
                   value={formData.visi}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
                     visi: e.target.value
                   }))}
-                  rows={4}
-                  className="w-full p-4 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                  required
+                  rows={3}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl">
-                <label className="block text-sm font-medium text-purple-900 mb-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Misi
                 </label>
                 <textarea
+                  name="misi"
                   value={formData.misi}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
                     misi: e.target.value
                   }))}
-                  rows={4}
-                  className="w-full p-4 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                  required
+                  rows={3}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl w-full col-span-2">
-                <label className="block text-sm font-medium text-green-900 mb-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Program Kerja
                 </label>
                 <textarea
+                  name="program_kerja"
                   value={formData.program_kerja}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
                     program_kerja: e.target.value
                   }))}
-                  rows={4}
-                  className="w-full p-4 rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                  required
+                  rows={3}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-4 rounded-xl 
-              hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 
-              focus:ring-offset-2 disabled:from-blue-300 disabled:to-blue-400 transition-all duration-200 
-              shadow-lg hover:shadow-xl"
-            >
-              {loading ? 'Menyimpan...' : 'Simpan Kandidat'}
-            </button>
+            {/* Submit Button */}
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 
+                         transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+                         w-full sm:w-auto"
+              >
+                {loading ? 'Menyimpan...' : 'Simpan Kandidat'}
+              </button>
+            </div>
           </form>
         </div>
 
         {/* Daftar Kandidat */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-2xl font-semibold text-gray-800">Daftar Kandidat</h2>
-          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ketua</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Foto</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wakil</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Foto</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Detail</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    No. Urut
+                  </th>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ketua
+                  </th>
+                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Kelas
+                  </th>
+                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Foto
+                  </th>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Wakil
+                  </th>
+                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Kelas
+                  </th>
+                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Foto
+                  </th>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Aksi
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {candidates.map((candidate) => (
                   <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-blue-100 text-blue-800">
                         {candidate.candidate_number}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {candidate.ketua_name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {candidate.ketua_class}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                       {candidate.ketua_photo_url && (
-                        <div className="h-12 w-12 rounded-full overflow-hidden">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full overflow-hidden">
                           <Image
                             src={candidate.ketua_photo_url}
                             alt={`Foto Ketua ${candidate.ketua_name}`}
@@ -473,15 +496,15 @@ export default function CandidatesPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {candidate.wakil_name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {candidate.wakil_class}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                       {candidate.wakil_photo_url && (
-                        <div className="h-12 w-12 rounded-full overflow-hidden">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full overflow-hidden">
                           <Image
                             src={candidate.wakil_photo_url}
                             alt={`Foto Wakil ${candidate.wakil_name}`}
@@ -493,26 +516,26 @@ export default function CandidatesPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => {
-                          setSelectedCandidate(candidate)
-                          setIsDetailModalOpen(true)
-                        }}
-                        className="inline-flex items-center px-3 py-1 rounded-lg bg-blue-50 text-blue-700 
-                        hover:bg-blue-100 transition-colors duration-200"
-                      >
-                        <span>Lihat Detail</span>
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => handleDelete(candidate.id)}
-                        className="inline-flex items-center px-3 py-1 rounded-lg bg-red-50 text-red-700 
-                        hover:bg-red-100 transition-colors duration-200"
-                      >
-                        <span>Hapus</span>
-                      </button>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedCandidate(candidate)
+                            setIsDetailModalOpen(true)
+                          }}
+                          className="text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg bg-blue-50 text-blue-700 
+                                   hover:bg-blue-100 transition-colors duration-200"
+                        >
+                          Detail
+                        </button>
+                        <button
+                          onClick={() => handleDelete(candidate.id)}
+                          className="text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg bg-red-50 text-red-700 
+                                   hover:bg-red-100 transition-colors duration-200"
+                        >
+                          Hapus
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -523,81 +546,87 @@ export default function CandidatesPage() {
 
         {/* Modal Detail Kandidat */}
         <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-          <DialogContent className="max-w-3xl bg-white">
+          <DialogContent className="max-w-3xl bg-white mx-4 sm:mx-auto max-h-[90vh] overflow-y-auto">
             {selectedCandidate && (
               <>
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-bold text-gray-900">
+                <DialogHeader className="sticky top-0 bg-white z-10 pb-4 border-b">
+                  <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900">
                     Detail Paslon Nomor {selectedCandidate.candidate_number}
                   </DialogTitle>
                 </DialogHeader>
                 
-                <div className="mt-6 space-y-6">
+                <div className="py-6 space-y-8">
                   {/* Info Paslon */}
-                  <div className="grid grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Ketua */}
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-4">
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="flex flex-col items-center text-center">
                         {selectedCandidate.ketua_photo_url && (
-                          <div className="h-20 w-20 rounded-full overflow-hidden">
+                          <div className="mb-4 h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden border-4 border-white shadow-lg">
                             <Image
                               src={selectedCandidate.ketua_photo_url}
                               alt={`Foto Ketua ${selectedCandidate.ketua_name}`}
-                              width={80}
-                              height={80}
+                              width={160}
+                              height={160}
                               className="h-full w-full object-cover"
                               priority
                             />
                           </div>
                         )}
                         <div>
-                          <h3 className="font-semibold text-lg text-gray-900">Calon Ketua</h3>
-                          <p className="text-gray-700">{selectedCandidate.ketua_name}</p>
-                          <p className="text-gray-500 text-sm">{selectedCandidate.ketua_class}</p>
+                          <h3 className="font-bold text-xl text-gray-900 mb-1">Calon Ketua</h3>
+                          <p className="text-lg text-gray-700 font-medium">{selectedCandidate.ketua_name}</p>
+                          <p className="text-gray-500">{selectedCandidate.ketua_class}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Wakil */}
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-4">
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="flex flex-col items-center text-center">
                         {selectedCandidate.wakil_photo_url && (
-                          <div className="h-20 w-20 rounded-full overflow-hidden">
+                          <div className="mb-4 h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden border-4 border-white shadow-lg">
                             <Image
                               src={selectedCandidate.wakil_photo_url}
                               alt={`Foto Wakil ${selectedCandidate.wakil_name}`}
-                              width={80}
-                              height={80}
+                              width={160}
+                              height={160}
                               className="h-full w-full object-cover"
                               priority
                             />
                           </div>
                         )}
                         <div>
-                          <h3 className="font-semibold text-lg text-gray-900">Calon Wakil</h3>
-                          <p className="text-gray-700">{selectedCandidate.wakil_name}</p>
-                          <p className="text-gray-500 text-sm">{selectedCandidate.wakil_class}</p>
+                          <h3 className="font-bold text-xl text-gray-900 mb-1">Calon Wakil</h3>
+                          <p className="text-lg text-gray-700 font-medium">{selectedCandidate.wakil_name}</p>
+                          <p className="text-gray-500">{selectedCandidate.wakil_class}</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Visi */}
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-lg text-blue-900 mb-2">Visi</h3>
-                    <p className="text-gray-700 whitespace-pre-line">{selectedCandidate.visi}</p>
-                  </div>
+                  {/* Visi, Misi, Program Kerja */}
+                  <div className="space-y-6">
+                    <div className="bg-blue-50 p-6 rounded-xl">
+                      <h3 className="font-bold text-xl text-blue-900 mb-3">Visi</h3>
+                      <p className="text-gray-700 whitespace-pre-line text-base leading-relaxed">
+                        {selectedCandidate.visi}
+                      </p>
+                    </div>
 
-                  {/* Misi */}
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-lg text-green-900 mb-2">Misi</h3>
-                    <p className="text-gray-700 whitespace-pre-line">{selectedCandidate.misi}</p>
-                  </div>
+                    <div className="bg-green-50 p-6 rounded-xl">
+                      <h3 className="font-bold text-xl text-green-900 mb-3">Misi</h3>
+                      <p className="text-gray-700 whitespace-pre-line text-base leading-relaxed">
+                        {selectedCandidate.misi}
+                      </p>
+                    </div>
 
-                  {/* Program Kerja */}
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <h3 className="font-semibold text-lg text-purple-900 mb-2">Program Kerja</h3>
-                    <p className="text-gray-700 whitespace-pre-line">{selectedCandidate.program_kerja}</p>
+                    <div className="bg-purple-50 p-6 rounded-xl">
+                      <h3 className="font-bold text-xl text-purple-900 mb-3">Program Kerja</h3>
+                      <p className="text-gray-700 whitespace-pre-line text-base leading-relaxed">
+                        {selectedCandidate.program_kerja}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </>

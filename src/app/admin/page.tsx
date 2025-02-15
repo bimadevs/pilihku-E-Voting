@@ -69,8 +69,8 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     )
   }
@@ -106,7 +106,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Statistik */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* Total Pemilih */}
           <div className="bg-white p-8 rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-200">
             <div className="flex items-center space-x-4">
