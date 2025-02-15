@@ -81,35 +81,56 @@ yarn dev
 ```
 
 ## 💾 Struktur Database
+> Copy dan paste ke supabase SQL Editor
 
 ### Tabel `voters`
-- id (uuid, primary key)
-- nis (string, unique)
-- full_name (string)
-- class (string)
-- has_voted (boolean)
-- selected_candidate (uuid, foreign key)
-- created_at (timestamp)
+```sql
+create table public.voters (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  nis text not null,
+  full_name text not null,
+  class text not null,
+  has_voted boolean null default false,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint voters_pkey primary key (id),
+  constraint voters_nis_key unique (nis)
+) TABLESPACE pg_default;
+```
 
 ### Tabel `candidates`
-- id (uuid, primary key)
-- candidate_number (integer)
-- ketua_name (string)
-- wakil_name (string)
-- ketua_class (string)
-- wakil_class (string)
-- visi (text)
-- misi (text)
-- program_kerja (text)
-- ketua_photo_url (string)
-- wakil_photo_url (string)
-- created_at (timestamp)
+```sql
+create table public.candidates (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  candidate_number integer not null,
+  ketua_name text not null,
+  wakil_name text not null,
+  visi text not null,
+  misi text not null,
+  photo_url text null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  ketua_photo_url text null,
+  wakil_photo_url text null,
+  ketua_class text null,
+  wakil_class text null,
+  program_kerja text null,
+  constraint candidates_pkey primary key (id)
+) TABLESPACE pg_default;
+
+create unique INDEX IF not exists candidates_candidate_number_key on public.candidates using btree (candidate_number) TABLESPACE pg_default;
+```
 
 ### Tabel `votes`
-- id (uuid, primary key)
-- voter_id (uuid, foreign key)
-- candidate_id (uuid, foreign key)
-- created_at (timestamp)
+```sql
+create table public.votes (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  voter_id uuid null,
+  candidate_id uuid null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint votes_pkey primary key (id),
+  constraint votes_candidate_id_fkey foreign KEY (candidate_id) references candidates (id),
+  constraint votes_voter_id_fkey foreign KEY (voter_id) references voters (id)
+) TABLESPACE pg_default;
+```
 
 ## 📝 Panduan Penggunaan
 
