@@ -5,6 +5,7 @@ import { supabaseClient } from '@/lib/auth'
 import { toast } from 'react-hot-toast'
 import Papa from 'papaparse'
 import { Spinner } from '@/app/admin/voters/components/spinner'
+import { CheckCircle, AlertCircle, XCircle } from 'lucide-react'
 
 interface Voter {
   id: string
@@ -18,6 +19,38 @@ interface CSVVoter {
   nis: string
   full_name: string
   class: string
+}
+
+// Custom Toast Component
+const CustomToast = ({ message, type }: { message: string, type: 'success' | 'error' | 'info' }) => {
+  const icons = {
+    success: <CheckCircle className="w-5 h-5 text-green-500" />,
+    error: <XCircle className="w-5 h-5 text-red-500" />,
+    info: <AlertCircle className="w-5 h-5 text-blue-500" />
+  }
+
+  const bgColors = {
+    success: 'bg-green-50 border-green-200',
+    error: 'bg-red-50 border-red-200',
+    info: 'bg-blue-50 border-blue-200'
+  }
+
+  return (
+    <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border ${bgColors[type]}`}>
+      {icons[type]}
+      <span className="text-gray-700">{message}</span>
+    </div>
+  )
+}
+
+// Fungsi helper untuk menampilkan toast
+const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  toast.custom((t: { visible: boolean }) => (
+    <CustomToast message={message} type={type} />
+  ), {
+    duration: 3000,
+    position: 'top-center'
+  })
 }
 
 export default function VotersPage() {
@@ -70,12 +103,12 @@ export default function VotersPage() {
 
     setIsImporting(true)
     let successCount = 0
-    let errorCount = 0
     let duplicateCount = 0
+    let errorCount = 0
 
     try {
       const text = await file.text()
-
+      
       Papa.parse<CSVVoter>(text, {
         header: true,
         skipEmptyLines: true,
@@ -122,32 +155,27 @@ export default function VotersPage() {
               }
             }
 
-            // Reset file input
-            if (fileInputRef.current) fileInputRef.current.value = ''
-
-            // Tampilkan hasil import
-            toast.success(
-              `Import selesai:\n${successCount} berhasil\n${duplicateCount} duplikat\n${errorCount} gagal`
+            // Tampilkan notifikasi hasil import
+            showNotification(
+              `Import selesai:\n${successCount} berhasil\n${duplicateCount} duplikat\n${errorCount} gagal`,
+              successCount > 0 ? 'success' : 'error'
             )
-
-            // Refresh data
+            
             await fetchVoters()
           } catch (error) {
-            console.error('Error in import process:', error)
-            toast.error('Terjadi kesalahan saat mengimpor data')
+            showNotification('Gagal mengimpor data', 'error')
           } finally {
             setIsImporting(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
           }
         },
         error: (error: Error) => {
-          console.error('Error parsing CSV:', error)
-          toast.error('Gagal membaca file CSV')
+          showNotification('File CSV tidak valid', 'error')
           setIsImporting(false)
         }
       })
     } catch (error) {
-      console.error('Error importing CSV:', error)
-      toast.error('Gagal mengimpor data')
+      showNotification('Gagal membaca file', 'error')
       setIsImporting(false)
     }
   }
@@ -178,8 +206,16 @@ export default function VotersPage() {
 
       if (error) throw error
 
-      toast.success('Pemilih berhasil ditambahkan')
-      fetchVoters()
+      await toast.promise(
+        Promise.resolve(), // Gunakan Promise.resolve() karena operasi sudah selesai
+        {
+          loading: 'Menambahkan pemilih...',
+          success: 'Pemilih berhasil ditambahkan',
+          error: 'Gagal menambahkan pemilih'
+        }
+      )
+
+      await fetchVoters()
       setFormData({ nis: '', full_name: '', class: '' })
     } catch (error) {
       console.error('Error:', error)
@@ -193,13 +229,13 @@ export default function VotersPage() {
     if (!confirm('Yakin ingin menghapus pemilih ini?')) return
 
     try {
-      // Hapus vote terkait terlebih dahulu
+      setLoading(true)
+      
       await supabaseClient
         .from('votes')
         .delete()
         .eq('voter_id', id)
 
-      // Kemudian hapus pemilih
       const { error } = await supabaseClient
         .from('voters')
         .delete()
@@ -207,30 +243,36 @@ export default function VotersPage() {
 
       if (error) throw error
 
-      toast.success('Pemilih berhasil dihapus')
-      fetchVoters()
+      showNotification('Pemilih berhasil dihapus', 'success')
+      await fetchVoters()
     } catch (error) {
-      console.error('Error:', error)
-      toast.error('Gagal menghapus pemilih')
+      showNotification('Gagal menghapus pemilih', 'error')
+    } finally {
+      setLoading(false)
     }
   }
 
   // Fungsi untuk men-download template CSV
   function handleDownloadTemplate() {
-    // Header CSV + contoh data
-    const csvContent = `nis,full_name,class
+    try {
+      const csvContent = `nis,full_name,class
 123456,Bima Jovanta,XII TJKT
 123444,Erik Wong,XII TJKT
 123333,Felisitas Alverina,XI AKL 2
 122222,Gina Putri,XII AKL 1
 123453,Hendra Prasetyo,X AKL 1`;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'template_pemilih.csv';
-    link.click();
-    URL.revokeObjectURL(link.href);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'template_pemilih.csv';
+      link.click();
+      URL.revokeObjectURL(link.href);
+
+      showNotification('Template berhasil diunduh', 'success')
+    } catch (error) {
+      showNotification('Gagal mengunduh template', 'error')
+    }
   }
 
   // Filter dan sort data
@@ -306,51 +348,36 @@ export default function VotersPage() {
     try {
       setLoading(true)
       
-      // Dapatkan semua ID voters terlebih dahulu
       const { data: allVoters, error: fetchError } = await supabaseClient
         .from('voters')
         .select('id')
 
-      if (fetchError) {
-        console.error('Error fetching voters:', fetchError)
-        throw new Error('Gagal mengambil data pemilih')
-      }
+      if (fetchError) throw fetchError
 
       if (!allVoters || allVoters.length === 0) {
-        toast.error('Tidak ada data pemilih untuk dihapus')
+        showNotification('Tidak ada data pemilih untuk dihapus', 'info')
         return
       }
 
       const voterIds = allVoters.map(voter => voter.id)
 
-      // Hapus votes berdasarkan voter_id
-      const { error: votesError } = await supabaseClient
+      await supabaseClient
         .from('votes')
         .delete()
         .in('voter_id', voterIds)
 
-      if (votesError) {
-        console.error('Error deleting votes:', votesError)
-        throw new Error('Gagal menghapus data votes')
-      }
-
-      // Hapus voters berdasarkan id
       const { error: votersError } = await supabaseClient
         .from('voters')
         .delete()
         .in('id', voterIds)
 
-      if (votersError) {
-        console.error('Error deleting voters:', votersError)
-        throw new Error('Gagal menghapus data pemilih')
-      }
+      if (votersError) throw votersError
 
-      toast.success('Semua data pemilih berhasil dihapus')
-      setSelectedVoters([]) // Reset selected voters
-      await fetchVoters() // Refresh data
+      showNotification('Semua data pemilih berhasil dihapus', 'success')
+      setSelectedVoters([])
+      await fetchVoters()
     } catch (error) {
-      console.error('Error:', error)
-      toast.error(error instanceof Error ? error.message : 'Gagal menghapus data pemilih')
+      showNotification('Gagal menghapus data pemilih', 'error')
     } finally {
       setLoading(false)
     }
@@ -364,13 +391,11 @@ export default function VotersPage() {
     try {
       setLoading(true)
 
-      // Hapus votes terkait
       await supabaseClient
         .from('votes')
         .delete()
         .in('voter_id', selectedVoters)
 
-      //  hapus voters
       const { error } = await supabaseClient
         .from('voters')
         .delete()
@@ -378,12 +403,11 @@ export default function VotersPage() {
 
       if (error) throw error
 
-      toast.success(`${selectedVoters.length} data pemilih berhasil dihapus`)
-      fetchVoters()
+      showNotification(`${selectedVoters.length} pemilih berhasil dihapus`, 'success')
+      await fetchVoters()
       setSelectedVoters([])
     } catch (error) {
-      console.error('Error:', error)
-      toast.error('Gagal menghapus data pemilih')
+      showNotification('Gagal menghapus pemilih', 'error')
     } finally {
       setLoading(false)
     }
@@ -405,7 +429,7 @@ export default function VotersPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between mb-12">
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">

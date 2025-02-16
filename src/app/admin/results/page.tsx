@@ -5,6 +5,7 @@ import { supabaseClient } from '@/lib/auth'
 import { Bar, Doughnut, Line } from 'react-chartjs-2'
 import { useReactToPrint } from 'react-to-print'
 import Papa from 'papaparse'
+import { toast, Toaster } from 'react-hot-toast'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -51,6 +52,38 @@ interface VotingStats {
     hour: string
     count: number
   }[]
+}
+
+// Custom Toast Component
+const CustomToast = ({ message, type }: { message: string, type: 'success' | 'error' | 'info' }) => {
+  const icons = {
+    success: <CheckCircle className="w-5 h-5 text-green-500" />,
+    error: <Clock className="w-5 h-5 text-red-500" />,
+    info: <TrendingUp className="w-5 h-5 text-blue-500" />
+  }
+
+  const bgColors = {
+    success: 'bg-green-50 border-green-200',
+    error: 'bg-red-50 border-red-200',
+    info: 'bg-blue-50 border-blue-200'
+  }
+
+  return (
+    <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border ${bgColors[type]}`}>
+      {icons[type]}
+      <span className="text-gray-700">{message}</span>
+    </div>
+  )
+}
+
+// Fungsi helper untuk menampilkan toast
+const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  toast.custom((t: { visible: boolean }) => (
+    <CustomToast message={message} type={type} />
+  ), {
+    duration: 3000,
+    position: 'top-center'
+  })
 }
 
 export default function ResultsPage() {
@@ -147,53 +180,61 @@ export default function ResultsPage() {
   const handleCSVDownload = () => {
     if (!stats) return
 
-    // Format tanggal untuk nama file
-    const date = new Date().toLocaleDateString('id-ID').replace(/\//g, '-')
-    
-    // Persiapkan data untuk CSV
-    const csvData = [
-      ['Statistik Pemilihan OSIS'],
-      ['Tanggal Export', new Date().toLocaleString('id-ID')],
-      [''],
-      ['Statistik Umum'],
-      ['Total Pemilih', stats.totalVoters.toString()],
-      ['Sudah Memilih', stats.votedCount.toString()],
-      ['Belum Memilih', stats.notVotedCount.toString()],
-      ['Persentase Partisipasi', `${stats.votingPercentage.toFixed(2)}%`],
-      [''],
-      ['Hasil Per Kandidat'],
-      ['Nomor Urut', 'Ketua', 'Wakil', 'Jumlah Suara', 'Persentase'],
-      ...stats.candidateResults.map(result => [
-        `Paslon ${result.candidateNumber}`,
-        result.ketuaName,
-        result.wakilName,
-        result.voteCount.toString(),
-        `${result.percentage.toFixed(2)}%`
-      ]),
-      [''],
-      ['Tren Voting per Jam'],
-      ['Jam', 'Jumlah Suara'],
-      ...(stats.votingHistory?.map(history => [
-        history.hour,
-        history.count.toString()
-      ]) || [])
-    ]
+    try {
+      // Format tanggal untuk nama file
+      const date = new Date().toLocaleDateString('id-ID').replace(/\//g, '-')
+      
+      // Persiapkan data untuk CSV
+      const csvData = [
+        ['Statistik Pemilihan OSIS'],
+        ['Tanggal Export', new Date().toLocaleString('id-ID')],
+        [''],
+        ['Statistik Umum'],
+        ['Total Pemilih', stats.totalVoters.toString()],
+        ['Sudah Memilih', stats.votedCount.toString()],
+        ['Belum Memilih', stats.notVotedCount.toString()],
+        ['Persentase Partisipasi', `${stats.votingPercentage.toFixed(2)}%`],
+        [''],
+        ['Hasil Per Kandidat'],
+        ['Nomor Urut', 'Ketua', 'Wakil', 'Jumlah Suara', 'Persentase'],
+        ...stats.candidateResults.map(result => [
+          `Paslon ${result.candidateNumber}`,
+          result.ketuaName,
+          result.wakilName,
+          result.voteCount.toString(),
+          `${result.percentage.toFixed(2)}%`
+        ]),
+        [''],
+        ['Tren Voting per Jam'],
+        ['Jam', 'Jumlah Suara'],
+        ...(stats.votingHistory?.map(history => [
+          history.hour,
+          history.count.toString()
+        ]) || [])
+      ]
 
-    // Konversi ke CSV menggunakan Papa Parse
-    const csv = Papa.unparse(csvData)
-    
-    // Buat dan unduh file
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    
-    link.setAttribute('href', url)
-    link.setAttribute('download', `hasil-voting-osis-${date}.csv`)
-    link.style.visibility = 'hidden'
-    
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+      // Konversi ke CSV menggunakan Papa Parse
+      const csv = Papa.unparse(csvData)
+      
+      // Buat dan unduh file
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      
+      link.setAttribute('href', url)
+      link.setAttribute('download', `hasil-voting-osis-${date}.csv`)
+      link.style.visibility = 'hidden'
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      // Tampilkan notifikasi sukses
+      showNotification('Data hasil voting berhasil diexport', 'success')
+    } catch (error) {
+      console.error('Error exporting data:', error)
+      showNotification('Gagal mengexport data hasil voting', 'error')
+    }
   }
 
   if (loading) return (
@@ -247,6 +288,7 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
+      <Toaster position="top-center" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header Section */}
         <div className="mb-8">

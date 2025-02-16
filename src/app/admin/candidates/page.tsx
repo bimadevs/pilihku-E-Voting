@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { supabaseClient } from '@/lib/auth'
-import { toast } from 'react-hot-toast'
+import { toast, Toaster } from 'react-hot-toast'
 import Image from 'next/image'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import { CheckCircle, AlertCircle, XCircle } from 'lucide-react'
 
 interface Candidate {
   id: string
@@ -18,6 +19,38 @@ interface Candidate {
   program_kerja: string
   ketua_photo_url?: string
   wakil_photo_url?: string
+}
+
+// Custom Toast Component
+const CustomToast = ({ message, type }: { message: string, type: 'success' | 'error' | 'info' }) => {
+  const icons = {
+    success: <CheckCircle className="w-5 h-5 text-green-500" />,
+    error: <XCircle className="w-5 h-5 text-red-500" />,
+    info: <AlertCircle className="w-5 h-5 text-blue-500" />
+  }
+
+  const bgColors = {
+    success: 'bg-green-50 border-green-200',
+    error: 'bg-red-50 border-red-200',
+    info: 'bg-blue-50 border-blue-200'
+  }
+
+  return (
+    <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border ${bgColors[type]}`}>
+      {icons[type]}
+      <span className="text-gray-700">{message}</span>
+    </div>
+  )
+}
+
+// Fungsi helper untuk menampilkan toast
+const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  toast.custom((t: { visible: boolean }) => (
+    <CustomToast message={message} type={type} />
+  ), {
+    duration: 3000,
+    position: 'top-center'
+  })
 }
 
 export default function CandidatesPage() {
@@ -77,8 +110,7 @@ export default function CandidatesPage() {
           const fileExt = formData.ketua_photo.name.split('.').pop()
           const fileName = `ketua_${Date.now()}.${fileExt}`
           
-          // Upload file
-          const { data: uploadData, error: uploadError } = await supabaseClient
+          const { error: uploadError } = await supabaseClient
             .storage
             .from('candidate-photos')
             .upload(`public/${fileName}`, formData.ketua_photo, {
@@ -88,7 +120,6 @@ export default function CandidatesPage() {
 
           if (uploadError) throw uploadError
 
-          // Get public URL
           const { data } = supabaseClient
             .storage
             .from('candidate-photos')
@@ -96,7 +127,7 @@ export default function CandidatesPage() {
 
           ketuaPhotoUrl = data.publicUrl
         } catch (error) {
-          console.error('Error uploading ketua photo:', error)
+          showNotification('Gagal mengupload foto ketua', 'error')
           throw new Error('Gagal mengupload foto ketua')
         }
       }
@@ -107,8 +138,7 @@ export default function CandidatesPage() {
           const fileExt = formData.wakil_photo.name.split('.').pop()
           const fileName = `wakil_${Date.now()}.${fileExt}`
           
-          // Upload file
-          const { data: uploadData, error: uploadError } = await supabaseClient
+          const { error: uploadError } = await supabaseClient
             .storage
             .from('candidate-photos')
             .upload(`public/${fileName}`, formData.wakil_photo, {
@@ -118,7 +148,6 @@ export default function CandidatesPage() {
 
           if (uploadError) throw uploadError
 
-          // Get public URL
           const { data } = supabaseClient
             .storage
             .from('candidate-photos')
@@ -126,7 +155,7 @@ export default function CandidatesPage() {
 
           wakilPhotoUrl = data.publicUrl
         } catch (error) {
-          console.error('Error uploading wakil photo:', error)
+          showNotification('Gagal mengupload foto wakil', 'error')
           throw new Error('Gagal mengupload foto wakil')
         }
       }
@@ -134,24 +163,22 @@ export default function CandidatesPage() {
       // Simpan data kandidat
       const { error: insertError } = await supabaseClient
         .from('candidates')
-        .insert([
-          {
-            candidate_number: parseInt(formData.candidate_number),
-            ketua_name: formData.ketua_name,
-            wakil_name: formData.wakil_name,
-            ketua_class: formData.ketua_class,
-            wakil_class: formData.wakil_class,
-            visi: formData.visi,
-            misi: formData.misi,
-            program_kerja: formData.program_kerja,
-            ketua_photo_url: ketuaPhotoUrl,
-            wakil_photo_url: wakilPhotoUrl
-          }
-        ])
+        .insert([{
+          candidate_number: parseInt(formData.candidate_number),
+          ketua_name: formData.ketua_name,
+          wakil_name: formData.wakil_name,
+          ketua_class: formData.ketua_class,
+          wakil_class: formData.wakil_class,
+          visi: formData.visi,
+          misi: formData.misi,
+          program_kerja: formData.program_kerja,
+          ketua_photo_url: ketuaPhotoUrl,
+          wakil_photo_url: wakilPhotoUrl
+        }])
 
       if (insertError) throw insertError
 
-      toast.success('Kandidat berhasil ditambahkan')
+      showNotification('Kandidat berhasil ditambahkan', 'success')
       fetchCandidates()
       setFormData({
         candidate_number: '',
@@ -168,9 +195,9 @@ export default function CandidatesPage() {
     } catch (error) {
       console.error('Error:', error)
       if (error instanceof Error) {
-        toast.error(error.message)
+        showNotification(error.message, 'error')
       } else {
-        toast.error('Gagal menambahkan kandidat')
+        showNotification('Gagal menambahkan kandidat', 'error')
       }
     } finally {
       setLoading(false)
@@ -182,11 +209,21 @@ export default function CandidatesPage() {
 
     try {
       // 1. Dapatkan data kandidat untuk mendapatkan path foto
-      const candidate = candidates.find(c => c.id === id)
-      
+      const { data: candidate, error: fetchError } = await supabaseClient
+        .from('candidates')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (fetchError) {
+        throw new Error('Gagal mengambil data kandidat')
+      }
+
       // 2. Hapus foto ketua dari storage jika ada
       if (candidate?.ketua_photo_url) {
-        const ketuaPhotoPath = `public/${candidate.ketua_photo_url.split('/').pop()}`
+        const ketuaPhotoPath = candidate.ketua_photo_url
+          .split('candidate-photos/')[1] // Ambil path setelah 'candidate-photos/'
+
         const { error: ketuaDeleteError } = await supabaseClient
           .storage
           .from('candidate-photos')
@@ -194,12 +231,15 @@ export default function CandidatesPage() {
         
         if (ketuaDeleteError) {
           console.error('Error deleting ketua photo:', ketuaDeleteError)
+          throw new Error('Gagal menghapus foto ketua')
         }
       }
 
       // 3. Hapus foto wakil dari storage jika ada
       if (candidate?.wakil_photo_url) {
-        const wakilPhotoPath = `public/${candidate.wakil_photo_url.split('/').pop()}`
+        const wakilPhotoPath = candidate.wakil_photo_url
+          .split('candidate-photos/')[1] // Ambil path setelah 'candidate-photos/'
+
         const { error: wakilDeleteError } = await supabaseClient
           .storage
           .from('candidate-photos')
@@ -207,6 +247,7 @@ export default function CandidatesPage() {
         
         if (wakilDeleteError) {
           console.error('Error deleting wakil photo:', wakilDeleteError)
+          throw new Error('Gagal menghapus foto wakil')
         }
       }
 
@@ -216,7 +257,9 @@ export default function CandidatesPage() {
         .delete()
         .eq('candidate_id', id)
 
-      if (votesError) throw votesError
+      if (votesError) {
+        throw new Error('Gagal menghapus data voting')
+      }
 
       // 5. Hapus kandidat
       const { error: deleteError } = await supabaseClient
@@ -224,13 +267,18 @@ export default function CandidatesPage() {
         .delete()
         .eq('id', id)
 
-      if (deleteError) throw deleteError
+      if (deleteError) {
+        throw new Error('Gagal menghapus data kandidat')
+      }
 
-      toast.success('Kandidat berhasil dihapus')
+      showNotification('Kandidat berhasil dihapus', 'success')
       fetchCandidates()
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Gagal menghapus kandidat')
+      showNotification(
+        error instanceof Error ? error.message : 'Gagal menghapus kandidat', 
+        'error'
+      )
     }
   }
 
@@ -244,6 +292,7 @@ export default function CandidatesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 sm:py-12">
+      <Toaster position="top-center" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Header */}
         <h1 className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-6 sm:mb-12">
@@ -457,6 +506,9 @@ export default function CandidatesPage() {
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     No. Urut
                   </th>
+                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Foto
+                  </th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Ketua
                   </th>
@@ -472,9 +524,6 @@ export default function CandidatesPage() {
                   <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Kelas
                   </th>
-                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Foto
-                  </th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Aksi
                   </th>
@@ -487,12 +536,6 @@ export default function CandidatesPage() {
                       <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-blue-100 text-blue-800">
                         {candidate.candidate_number}
                       </span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {candidate.ketua_name}
-                    </td>
-                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {candidate.ketua_class}
                     </td>
                     <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                       {candidate.ketua_photo_url && (
@@ -509,10 +552,10 @@ export default function CandidatesPage() {
                       )}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {candidate.wakil_name}
+                      {candidate.ketua_name}
                     </td>
                     <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {candidate.wakil_class}
+                      {candidate.ketua_class}
                     </td>
                     <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                       {candidate.wakil_photo_url && (
@@ -527,6 +570,12 @@ export default function CandidatesPage() {
                           />
                         </div>
                       )}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {candidate.wakil_name}
+                    </td>
+                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {candidate.wakil_class}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col sm:flex-row gap-2">

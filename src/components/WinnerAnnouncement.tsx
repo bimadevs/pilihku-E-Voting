@@ -6,7 +6,7 @@ import Confetti from 'react-confetti'
 import { supabaseClient } from '@/lib/auth'
 
 interface WinnerAnnouncementProps {
-  announcementTime: string
+  announcementTime: string | null
 }
 
 export default function WinnerAnnouncement({ announcementTime }: WinnerAnnouncementProps) {
@@ -17,6 +17,11 @@ export default function WinnerAnnouncement({ announcementTime }: WinnerAnnouncem
   const [isAnnouncementActive, setIsAnnouncementActive] = useState(true)
 
   useEffect(() => {
+    if (!announcementTime) {
+      setIsAnnouncementActive(false)
+      return
+    }
+
     checkAnnouncementStatus()
     const timer = setInterval(() => {
       const now = new Date().getTime()

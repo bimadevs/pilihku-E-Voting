@@ -11,6 +11,7 @@ const navigation = [
   { name: 'Kandidat', href: '/admin/candidates' },
   { name: 'Pemilih', href: '/admin/voters' },
   { name: 'Hasil', href: '/admin/results' },
+  { name: 'Pengaturan', href: '/admin/settings' },
 ]
 
 export function Navbar() {

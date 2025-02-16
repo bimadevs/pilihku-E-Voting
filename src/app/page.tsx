@@ -45,17 +45,35 @@ export default function HomePage() {
 
   async function fetchSettings() {
     try {
-      const { data, error } = await supabaseClient
+      // Periksa apakah tabel settings sudah memiliki data
+      const { data: existingData, error: checkError } = await supabaseClient
         .from('settings')
-        .select('announcement_time, winner_id')
-        .single()
-      
-      if (error) throw error
-      
-      console.log('Fetched settings:', data) // Debugging
-      setSettings(data || { announcement_time: null, winner_id: null })
+        .select('*')
+
+      if (checkError) throw checkError
+
+      // Jika belum ada data, buat data baru
+      if (!existingData || existingData.length === 0) {
+        const { data: newData, error: insertError } = await supabaseClient
+          .from('settings')
+          .insert([{
+            announcement_time: null,
+            winner_id: null
+          }])
+          .select()
+          .single()
+
+        if (insertError) throw insertError
+
+        setSettings(newData || { announcement_time: null, winner_id: null })
+      } else {
+        // Jika sudah ada data, gunakan data pertama
+        setSettings(existingData[0] || { announcement_time: null, winner_id: null })
+      }
     } catch (error) {
       console.error('Error fetching settings:', error)
+      // Set default state jika terjadi error
+      setSettings({ announcement_time: null, winner_id: null })
     }
   }
 
@@ -125,7 +143,7 @@ export default function HomePage() {
       </div>
 
       {/* Winner Announcement Section */}
-      {settings.announcement_time && settings.winner_id && (
+      {settings?.announcement_time && settings?.winner_id && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <WinnerAnnouncement announcementTime={settings.announcement_time} />
         </div>
