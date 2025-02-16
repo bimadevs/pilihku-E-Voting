@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     google: 'your-google-verification-code',
   },
   alternates: {
-    canonical: 'https://your-domain.com',
+    canonical: 'https://pilihku.bimadev.xyz',
   }
 };
 
@@ -54,7 +54,7 @@ export default function RootLayout({
         <meta name="color-scheme" content="light" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
         <Toaster position="top-center" />

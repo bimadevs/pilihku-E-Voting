@@ -61,7 +61,7 @@ export default function AdminDashboard() {
   async function handleLogout() {
     try {
       await supabaseClient.auth.signOut()
-      router.push('/')
+      router.push('/admin/login')
     } catch (error) {
       console.error('Error logging out:', error)
     }

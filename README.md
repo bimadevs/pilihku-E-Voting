@@ -2,6 +2,28 @@
 
 PilihKu adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OSIS di sekolah. Dibangun dengan Next.js 14, Supabase, Tailwind CSS, dan berbagai teknologi modern lainnya.
 
+## 📸 Preview
+
+<div align="center">
+  <h3>Halaman Login</h3>
+  <img src="docs/screenshots/login.png" alt="Login Page" width="800"/>
+  
+  <h3>Halaman Voting</h3>
+  <img src="docs/screenshots/vote.png" alt="Voting Page" width="800"/>
+  
+  <h3>Dashboard Admin</h3>
+  <img src="docs/screenshots/admin-dashboard.png" alt="Admin Dashboard" width="800"/>
+  
+  <h3>Manajemen Kandidat</h3>
+  <img src="docs/screenshots/candidates.png" alt="Candidates Management" width="800"/>
+  
+  <h3>Hasil Voting</h3>
+  <img src="docs/screenshots/results.png" alt="Voting Results" width="800"/>
+  
+  <h3>Pengumuman Pemenang</h3>
+  <img src="docs/screenshots/announcement.png" alt="Winner Announcement" width="800"/>
+</div>
+
 ## 🌟 Fitur Utama
 
 ### Untuk Pemilih
