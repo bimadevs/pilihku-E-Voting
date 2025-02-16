@@ -187,116 +187,169 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h1 className="text-2xl font-bold mb-6 text-gray-900">
-            Pengaturan Pengumuman Pemenang
-          </h1>
+        <div className="space-y-8">
+          {/* Header Section */}
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+              Pengaturan Pengumuman
+            </h1>
+            <p className="mt-3 text-gray-500 max-w-2xl mx-auto">
+              Atur waktu pengumuman pemenang dan pantau hasil voting secara real-time
+            </p>
+          </div>
 
-          {/* Tampilkan hasil voting */}
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-4">Hasil Voting Saat Ini</h2>
-            <div className="space-y-4">
+          {/* Hasil Voting Card */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              Hasil Voting Saat Ini
+            </h2>
+            <div className="grid gap-4 sm:gap-6">
               {votingResults.map((result, index) => (
                 <div 
                   key={result.candidate_id}
-                  className={`p-4 rounded-xl ${index === 0 ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}
+                  className={`p-6 rounded-xl transition-all duration-200 ${
+                    index === 0 
+                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100' 
+                      : 'bg-gray-50'
+                  }`}
                 >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="space-y-1">
+                      <h3 className="font-medium text-lg text-gray-900">
                         {result.ketua_name} & {result.wakil_name}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {result.vote_count} suara ({result.percentage}%)
-                      </p>
+                      </h3>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-gray-600">
+                          {result.vote_count} suara
+                        </span>
+                        <div className="h-1 w-1 rounded-full bg-gray-300" />
+                        <span className="text-sm font-medium text-blue-600">
+                          {result.percentage}%
+                        </span>
+                      </div>
                     </div>
                     {index === 0 && (
-                      <span className="text-blue-600 text-sm font-medium">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                         Pemenang Sementara
                       </span>
                     )}
+                  </div>
+                  {/* Progress Bar */}
+                  <div className="mt-4 w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        index === 0 ? 'bg-blue-600' : 'bg-gray-400'
+                      }`}
+                      style={{ width: `${result.percentage}%` }}
+                    />
                   </div>
                 </div>
               ))}
             </div>
           </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Waktu Pengumuman Pemenang
-              </label>
-              <input
-                type="datetime-local"
-                value={announcementTime}
-                onChange={(e) => setAnnouncementTime(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                required
-              />
-              <p className="mt-2 text-sm text-gray-500">
-                Pengumuman akan otomatis menampilkan pemenang berdasarkan jumlah suara terbanyak
-              </p>
-            </div>
 
-            {/* Tampilkan pengaturan saat ini */}
-            {announcementTime && (
-              <div className="p-4 bg-blue-50 rounded-xl">
-                <p className="text-sm text-blue-600">
-                  Waktu pengumuman: {' '}
-                  <span className="font-medium">
-                    {(() => {
-                      const date = new Date(announcementTime)
-                      // Tambah 7 jam untuk waktu Indonesia
-                      date.setHours(date.getHours() + 7)
-                      return date.toLocaleString('id-ID', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    })()}
-                  </span>
+          {/* Pengaturan Waktu Card */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              Atur Waktu Pengumuman
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Waktu Pengumuman Pemenang
+                </label>
+                <input
+                  type="datetime-local"
+                  value={announcementTime}
+                  onChange={(e) => setAnnouncementTime(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 
+                           focus:border-transparent transition-all duration-200"
+                  required
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  Pengumuman akan otomatis menampilkan pemenang berdasarkan jumlah suara terbanyak
                 </p>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading || !announcementTime}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-xl 
-                       hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 
-                       focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 
-                       disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Menyimpan...
-                </span>
-              ) : (
-                'Simpan Pengaturan'
+              {/* Current Settings Display */}
+              {announcementTime && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                      <svg 
+                        className="w-4 h-4 text-blue-600" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        Waktu pengumuman diatur pada:
+                      </p>
+                      <p className="text-lg font-semibold text-blue-800 mt-1">
+                        {(() => {
+                          const date = new Date(announcementTime)
+                          date.setHours(date.getHours() + 7)
+                          return date.toLocaleString('id-ID', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
-          </form>
 
-          {/* Tambahkan tombol reset setelah form */}
-          {announcementTime && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <button
-                onClick={handleReset}
-                disabled={loading || !announcementTime}
-                className="w-full bg-red-100 text-red-600 py-3 px-4 rounded-xl 
-                         hover:bg-red-200 transition-all duration-200 font-medium
-                         disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Reset Waktu Pengumuman
-              </button>
-            </div>
-          )}
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 pt-6">
+                <button
+                  type="submit"
+                  disabled={loading || !announcementTime}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 
+                           rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none 
+                           focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all 
+                           duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center">
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Menyimpan...
+                    </span>
+                  ) : (
+                    'Simpan Pengaturan'
+                  )}
+                </button>
+
+                {announcementTime && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    disabled={loading}
+                    className="flex-1 bg-red-50 text-red-600 py-3 px-4 rounded-xl hover:bg-red-100 
+                             transition-all duration-200 font-medium disabled:opacity-50 
+                             disabled:cursor-not-allowed"
+                  >
+                    Reset Pengaturan
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
