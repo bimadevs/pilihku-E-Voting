@@ -486,7 +486,7 @@ export default function ResultsPage() {
             rel="noopener noreferrer"
             className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
           >
-            Build with ❤️ by{' '}
+            Build by{' '}
             <span className="font-medium bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               BimaDev
             </span>

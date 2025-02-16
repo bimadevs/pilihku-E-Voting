@@ -101,7 +101,7 @@ export default function HomePage() {
 
       {/* Candidates Section - Now with Educational Context */}
       <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
+        <div className="text-center hidden mb-12">
           <h2 className="text-3xl font-bold text-gray-900">
             Kandidat OSIS
           </h2>
@@ -121,7 +121,7 @@ export default function HomePage() {
             </motion.div>
           </div>
         ) : candidates.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center hidden py-12 bg-white rounded-xl shadow-sm">
             <p className="text-gray-600">Belum ada kandidat yang terdaftar</p>
           </div>
         ) : (
@@ -226,7 +226,7 @@ export default function HomePage() {
       </div>
 
       {/* Why Voting Matters Section */}
-      <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
+      <section className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-gray-900">
             Mengapa Suaramu Penting?
@@ -284,7 +284,7 @@ export default function HomePage() {
             </p>
           </motion.div>
         </div>
-      </div>
+      </section>
 
       {/* Voting Guide Section */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 py-16">
@@ -371,7 +371,7 @@ export default function HomePage() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
               >
-                Build with ❤️ by{' '}
+                Build by{' '}
                 <span className="font-medium bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hover:from-indigo-600 hover:to-blue-600">
                   BimaDev
                 </span>

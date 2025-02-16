@@ -24,12 +24,12 @@ export default function VoterLogin() {
         .single()
 
       if (error || !voter) {
-        setError('NIS tidak ditemukan')
+        setError('Maaf, NIS Anda tidak ditemukan. Hubungi Admin untuk informasi lebih lanjut.')
         return
       }
 
       if (voter.has_voted) {
-        setError('Anda sudah melakukan voting')
+        setError('Anda sudah melakukan voting. Terima kasih telah berkontribusi pada pemilihan OSIS.')
         return
       }
 
@@ -122,6 +122,7 @@ export default function VoterLogin() {
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm"
                     placeholder="Masukkan NIS Anda"
                     required
+                    autoComplete='off'
                     disabled={loading}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -180,7 +181,7 @@ export default function VoterLogin() {
               rel="noopener noreferrer"
               className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
-              Build with ❤️ by{' '}
+              Build by{' '}
               <span className="font-medium bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 BimaDev
               </span>
