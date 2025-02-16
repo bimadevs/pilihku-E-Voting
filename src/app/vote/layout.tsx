@@ -9,7 +9,7 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   return (
-    <html>
+    <html lang="en" className="light">
       <head>
         <StructuredData />
       </head>
