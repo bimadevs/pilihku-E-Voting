@@ -20,6 +20,17 @@ PilihKu adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OS
 - Monitoring hasil voting real-time
 - Export hasil dalam format CSV
 - Cetak laporan hasil pemilihan
+- Pengaturan waktu pengumuman pemenang
+- Pengumuman pemenang otomatis berdasarkan suara terbanyak
+- Reset pengaturan pengumuman
+
+### Fitur Pengumuman
+- Countdown timer untuk pengumuman pemenang
+- Tampilan animasi dan confetti saat pengumuman
+- Pengumuman otomatis pada waktu yang ditentukan
+- Pemenang ditentukan berdasarkan jumlah suara terbanyak
+- Pengumuman bisa direset atau dihapus
+
 
 ## 🛠 Teknologi yang Digunakan
 
@@ -132,6 +143,19 @@ create table public.votes (
 ) TABLESPACE pg_default;
 ```
 
+### Tabel `settings`
+```sql
+create table public.settings (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  announcement_time timestamp with time zone null,
+  winner_id uuid null,
+  created_at timestamp with time zone null default timezone ('utc'::text, now()),
+  updated_at timestamp with time zone null default timezone ('utc'::text, now()),
+  constraint settings_pkey primary key (id),
+  constraint settings_winner_id_fkey foreign KEY (winner_id) references candidates (id) on delete set null
+) TABLESPACE pg_default;
+```
+
 ## 📝 Panduan Penggunaan
 
 ### Untuk Admin
@@ -158,6 +182,12 @@ create table public.votes (
    - Export hasil ke CSV
    - Cetak laporan
 
+5. **Pengaturan Pengumuman**
+   - Buka menu "Pengaturan"
+   - Atur waktu pengumuman pemenang
+   - Lihat hasil voting sementara
+   - Reset pengaturan jika diperlukan
+
 ### Untuk Pemilih
 
 1. **Login**
@@ -169,6 +199,11 @@ create table public.votes (
    - Klik "Pilih" pada kandidat yang diinginkan
    - Konfirmasi pilihan
    - Setelah memilih, tidak bisa mengubah pilihan
+
+3. **Melihat Pengumuman**
+   - Tunggu hingga waktu pengumuman
+   - Lihat countdown timer
+   - Lihat pengumuman pemenang dengan animasi
 
 ## 🔒 Keamanan
 

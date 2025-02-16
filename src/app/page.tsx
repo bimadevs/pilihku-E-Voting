@@ -8,6 +8,7 @@ import { FaVoteYea, FaUserShield, FaCheckCircle, FaUsers, FaHandshake } from 're
 import { BsGraphUp } from 'react-icons/bs'
 import { Loader2 } from 'lucide-react'
 import { supabaseClient } from '@/lib/auth'
+import WinnerAnnouncement from '@/components/WinnerAnnouncement'
 
 interface Candidate {
   id: string
@@ -29,10 +30,34 @@ export default function HomePage() {
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'visi' | 'misi' | 'program kerja'>('visi')
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null)
+  const [settings, setSettings] = useState<{ 
+    announcement_time: string | null,
+    winner_id: string | null 
+  }>({ 
+    announcement_time: null,
+    winner_id: null
+  })
 
   useEffect(() => {
     fetchCandidates()
+    fetchSettings()
   }, [])
+
+  async function fetchSettings() {
+    try {
+      const { data, error } = await supabaseClient
+        .from('settings')
+        .select('announcement_time, winner_id')
+        .single()
+      
+      if (error) throw error
+      
+      console.log('Fetched settings:', data) // Debugging
+      setSettings(data || { announcement_time: null, winner_id: null })
+    } catch (error) {
+      console.error('Error fetching settings:', error)
+    }
+  }
 
   async function fetchCandidates() {
     try {
@@ -99,6 +124,14 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Winner Announcement Section */}
+      {settings.announcement_time && settings.winner_id && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <WinnerAnnouncement announcementTime={settings.announcement_time} />
+        </div>
+      )}
+
+      
       {/* Candidates Section - Now with Educational Context */}
       <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
         <div className="text-center hidden mb-12">

@@ -181,38 +181,50 @@ export default function CandidatesPage() {
     if (!confirm('Yakin ingin menghapus kandidat ini?')) return
 
     try {
-      // Hapus foto dari storage
+      // 1. Dapatkan data kandidat untuk mendapatkan path foto
       const candidate = candidates.find(c => c.id === id)
+      
+      // 2. Hapus foto ketua dari storage jika ada
       if (candidate?.ketua_photo_url) {
-        const ketuaPhotoPath = candidate.ketua_photo_url.split('/').pop() || ''
-        if (ketuaPhotoPath) {
-          await supabaseClient.storage
-            .from('candidate-photos')
-            .remove([ketuaPhotoPath])
-        }
-      }
-      if (candidate?.wakil_photo_url) {
-        const wakilPhotoPath = candidate.wakil_photo_url.split('/').pop() || ''
-        if (wakilPhotoPath) {
-          await supabaseClient.storage
-            .from('candidate-photos')
-            .remove([wakilPhotoPath])
+        const ketuaPhotoPath = `public/${candidate.ketua_photo_url.split('/').pop()}`
+        const { error: ketuaDeleteError } = await supabaseClient
+          .storage
+          .from('candidate-photos')
+          .remove([ketuaPhotoPath])
+        
+        if (ketuaDeleteError) {
+          console.error('Error deleting ketua photo:', ketuaDeleteError)
         }
       }
 
-      // Hapus votes terkait
-      await supabaseClient
+      // 3. Hapus foto wakil dari storage jika ada
+      if (candidate?.wakil_photo_url) {
+        const wakilPhotoPath = `public/${candidate.wakil_photo_url.split('/').pop()}`
+        const { error: wakilDeleteError } = await supabaseClient
+          .storage
+          .from('candidate-photos')
+          .remove([wakilPhotoPath])
+        
+        if (wakilDeleteError) {
+          console.error('Error deleting wakil photo:', wakilDeleteError)
+        }
+      }
+
+      // 4. Hapus votes terkait
+      const { error: votesError } = await supabaseClient
         .from('votes')
         .delete()
         .eq('candidate_id', id)
 
-      // Hapus kandidat
-      const { error } = await supabaseClient
+      if (votesError) throw votesError
+
+      // 5. Hapus kandidat
+      const { error: deleteError } = await supabaseClient
         .from('candidates')
         .delete()
         .eq('id', id)
 
-      if (error) throw error
+      if (deleteError) throw deleteError
 
       toast.success('Kandidat berhasil dihapus')
       fetchCandidates()
