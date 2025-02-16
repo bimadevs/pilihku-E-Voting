@@ -15,7 +15,7 @@ export default function VoteSuccess() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: 'Pilihku - E-Voting',
+          title: 'E-Voting OSIS',
           text: 'Saya sudah memberikan suara dalam pemilihan OSIS! Mari berpartisipasi untuk sekolah kita!',
           url: window.location.origin
         })
