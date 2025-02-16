@@ -477,21 +477,6 @@ export default function ResultsPage() {
             )}
           </div>
         </div>
-
-        {/* Build Credit */}
-        <div className="text-center mt-8">
-          <a
-            href="https://github.com/bimadevs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            Build by{' '}
-            <span className="font-medium bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              BimaDev
-            </span>
-          </a>
-        </div>
       </div>
     </div>
   )

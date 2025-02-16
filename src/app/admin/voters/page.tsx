@@ -417,7 +417,7 @@ export default function VotersPage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-6 transform hover:scale-[1.01] transition-all duration-200">
           <h2 className="text-2xl font-semibold mb-6 text-gray-800">Import Data Pemilih</h2>
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-4">
               <button
                 onClick={handleDownloadTemplate}
                 className="bg-green-500 text-white py-2 px-4 rounded-xl hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
