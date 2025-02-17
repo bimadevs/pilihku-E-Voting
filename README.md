@@ -178,6 +178,39 @@ create table public.settings (
 ) TABLESPACE pg_default;
 ```
 
+### Storage Bucket
+> Copy dan paste ke supabase SQL Editor untuk membuat bucket penyimpanan foto
+
+```sql
+-- Buat bucket untuk foto kandidat
+insert into storage.buckets (id, name, public) 
+values ('candidate-photos', 'candidate-photos', true);
+
+-- Atur security policies untuk bucket candidate-photos
+create policy "Foto kandidat dapat diakses publik"
+on storage.objects for select
+using ( bucket_id = 'candidate-photos' );
+
+create policy "Hanya admin yang dapat menambah foto kandidat"
+on storage.objects for insert
+with check (
+  bucket_id = 'candidate-photos' 
+  and auth.role() = 'authenticated'
+);
+
+create policy "Hanya admin yang dapat menghapus foto kandidat"
+on storage.objects for delete
+using (
+  bucket_id = 'candidate-photos'
+  and auth.role() = 'authenticated'
+);
+```
+
+Konfigurasi bucket ini untuk:
+- Akses publik untuk melihat foto kandidat
+- Hanya admin yang dapat mengunggah foto baru
+- Hanya admin yang dapat menghapus foto
+
 ## 📝 Panduan Penggunaan
 
 ### Untuk Admin

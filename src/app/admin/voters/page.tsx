@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast'
 import Papa from 'papaparse'
 import { Spinner } from '@/app/admin/voters/components/spinner'
 import { CheckCircle, AlertCircle, XCircle } from 'lucide-react'
+import { ConfirmationDialog } from './components/ConfirmationDialog'
 
 interface Voter {
   id: string
@@ -71,6 +72,14 @@ export default function VotersPage() {
   const [selectedVoters, setSelectedVoters] = useState<string[]>([])
   
   const ITEMS_PER_PAGE = 20
+
+  // 2. Tambahkan state untuk dialog
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    type: 'single' as 'single' | 'multiple' | 'all',
+    id: '',
+    count: 0
+  })
 
   useEffect(() => {
     fetchVoters()
@@ -225,28 +234,107 @@ export default function VotersPage() {
     }
   }
 
+  // 3. Modifikasi fungsi handleDelete
   async function handleDelete(id: string) {
-    if (!confirm('Yakin ingin menghapus pemilih ini?')) return
+    setConfirmDialog({
+      isOpen: true,
+      type: 'single',
+      id,
+      count: 1
+    })
+  }
 
+  // 4. Modifikasi fungsi handleDeleteSelected
+  async function handleDeleteSelected() {
+    if (!selectedVoters.length) return
+    
+    setConfirmDialog({
+      isOpen: true,
+      type: 'multiple',
+      id: '',
+      count: selectedVoters.length
+    })
+  }
+
+  // 5. Modifikasi fungsi handleDeleteAll
+  async function handleDeleteAll() {
+    setConfirmDialog({
+      isOpen: true,
+      type: 'all',
+      id: '',
+      count: voters.length
+    })
+  }
+
+  // 6. Tambahkan fungsi handleConfirmDelete
+  async function handleConfirmDelete() {
+    setLoading(true)
+    
     try {
-      setLoading(true)
-      
-      await supabaseClient
-        .from('votes')
-        .delete()
-        .eq('voter_id', id)
+      if (confirmDialog.type === 'single') {
+        // Hapus votes terkait
+        await supabaseClient
+          .from('votes')
+          .delete()
+          .eq('voter_id', confirmDialog.id)
 
-      const { error } = await supabaseClient
-        .from('voters')
-        .delete()
-        .eq('id', id)
+        // Hapus voter
+        const { error } = await supabaseClient
+          .from('voters')
+          .delete()
+          .eq('id', confirmDialog.id)
 
-      if (error) throw error
+        if (error) throw error
+      } else if (confirmDialog.type === 'multiple') {
+        // Hapus votes terkait
+        await supabaseClient
+          .from('votes')
+          .delete()
+          .in('voter_id', selectedVoters)
 
-      showNotification('Pemilih berhasil dihapus', 'success')
+        // Hapus voters
+        const { error } = await supabaseClient
+          .from('voters')
+          .delete()
+          .in('id', selectedVoters)
+
+        if (error) throw error
+        setSelectedVoters([])
+      } else if (confirmDialog.type === 'all') {
+        const { data: allVoters } = await supabaseClient
+          .from('voters')
+          .select('id')
+
+        if (allVoters) {
+          const voterIds = allVoters.map(voter => voter.id)
+          
+          // Hapus votes terkait
+          await supabaseClient
+            .from('votes')
+            .delete()
+            .in('voter_id', voterIds)
+
+          // Hapus semua voters
+          const { error } = await supabaseClient
+            .from('voters')
+            .delete()
+            .in('id', voterIds)
+
+          if (error) throw error
+        }
+      }
+
+      showNotification(
+        `${confirmDialog.type === 'all' 
+          ? 'Semua data' 
+          : confirmDialog.type === 'multiple'
+          ? `${confirmDialog.count} data`
+          : 'Data'} pemilih berhasil dihapus`, 
+        'success'
+      )
       await fetchVoters()
     } catch (error) {
-      showNotification('Gagal menghapus pemilih', 'error')
+      showNotification('Gagal menghapus data pemilih', 'error')
     } finally {
       setLoading(false)
     }
@@ -338,78 +426,6 @@ export default function VotersPage() {
       setSelectedVoters(prev => [...prev, voterId])
     } else {
       setSelectedVoters(prev => prev.filter(id => id !== voterId))
-    }
-  }
-
-  // Fungsi untuk menghapus semua data
-  async function handleDeleteAll() {
-    if (!confirm('Anda yakin ingin menghapus SEMUA data pemilih? Tindakan ini tidak dapat dibatalkan.')) return
-
-    try {
-      setLoading(true)
-      
-      const { data: allVoters, error: fetchError } = await supabaseClient
-        .from('voters')
-        .select('id')
-
-      if (fetchError) throw fetchError
-
-      if (!allVoters || allVoters.length === 0) {
-        showNotification('Tidak ada data pemilih untuk dihapus', 'info')
-        return
-      }
-
-      const voterIds = allVoters.map(voter => voter.id)
-
-      await supabaseClient
-        .from('votes')
-        .delete()
-        .in('voter_id', voterIds)
-
-      const { error: votersError } = await supabaseClient
-        .from('voters')
-        .delete()
-        .in('id', voterIds)
-
-      if (votersError) throw votersError
-
-      showNotification('Semua data pemilih berhasil dihapus', 'success')
-      setSelectedVoters([])
-      await fetchVoters()
-    } catch (error) {
-      showNotification('Gagal menghapus data pemilih', 'error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Fungsi untuk menghapus data terpilih
-  async function handleDeleteSelected() {
-    if (!selectedVoters.length) return
-    if (!confirm(`Anda yakin ingin menghapus ${selectedVoters.length} data pemilih terpilih?`)) return
-
-    try {
-      setLoading(true)
-
-      await supabaseClient
-        .from('votes')
-        .delete()
-        .in('voter_id', selectedVoters)
-
-      const { error } = await supabaseClient
-        .from('voters')
-        .delete()
-        .in('id', selectedVoters)
-
-      if (error) throw error
-
-      showNotification(`${selectedVoters.length} pemilih berhasil dihapus`, 'success')
-      await fetchVoters()
-      setSelectedVoters([])
-    } catch (error) {
-      showNotification('Gagal menghapus pemilih', 'error')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -763,6 +779,29 @@ export default function VotersPage() {
         <div className="mt-4 text-sm text-gray-600">
           <p>Shortcut: Tekan tombol "Delete" untuk menghapus data yang dipilih</p>
         </div>
+
+        {/* 7. Tambahkan ConfirmationDialog di akhir sebelum penutup div terakhir */}
+        <ConfirmationDialog
+          isOpen={confirmDialog.isOpen}
+          onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={handleConfirmDelete}
+          title={
+            confirmDialog.type === 'all' 
+              ? 'Hapus Semua Data'
+              : confirmDialog.type === 'multiple'
+              ? 'Hapus Data Terpilih'
+              : 'Hapus Data Pemilih'
+          }
+          message={
+            confirmDialog.type === 'all'
+              ? 'Anda yakin ingin menghapus SEMUA data pemilih? Tindakan ini tidak dapat dibatalkan.'
+              : confirmDialog.type === 'multiple'
+              ? 'Anda yakin ingin menghapus data pemilih yang dipilih?'
+              : 'Anda yakin ingin menghapus data pemilih ini?'
+          }
+          type={confirmDialog.type}
+          count={confirmDialog.count}
+        />
       </div>
     </div>
   )

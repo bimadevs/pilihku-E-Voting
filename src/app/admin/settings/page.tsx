@@ -5,6 +5,7 @@ import { supabaseClient } from '@/lib/auth'
 import { toast } from 'react-hot-toast'
 import { motion } from 'framer-motion'
 import { Loader2, Clock, Users, ChartBar, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { ConfirmationDialog } from '../voters/components/ConfirmationDialog'
 
 interface Settings {
   id?: string
@@ -26,6 +27,14 @@ export default function SettingsPage() {
   const [settingsId, setSettingsId] = useState<string | null>(null)
   const [votingResults, setVotingResults] = useState<VotingResult[]>([])
   const [winnerId, setWinnerId] = useState<string | null>(null)
+
+  // Tambahkan state untuk dialog konfirmasi
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    type: 'reset' as 'reset' | 'save',
+    id: '',
+    count: 0
+  })
 
   useEffect(() => {
     fetchSettings()
@@ -162,8 +171,15 @@ export default function SettingsPage() {
   }
 
   async function handleReset() {
-    if (!confirm('Apakah Anda yakin ingin mereset waktu pengumuman?')) return
-    
+    setConfirmDialog({
+      isOpen: true,
+      type: 'reset',
+      id: '',
+      count: 0
+    })
+  }
+
+  async function handleConfirmReset() {
     setLoading(true)
     try {
       const { error } = await supabaseClient
@@ -408,6 +424,17 @@ export default function SettingsPage() {
           </motion.div>
         </motion.div>
       </div>
+
+      {/* Tambahkan ConfirmationDialog di akhir sebelum penutup div terakhir */}
+      <ConfirmationDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={handleConfirmReset}
+        title="Reset Pengaturan"
+        message="Anda yakin ingin mereset waktu pengumuman? Tindakan ini akan menghapus waktu pengumuman yang telah diatur dan pemenang yang telah ditentukan."
+        type="reset"
+        count={0}
+      />
     </div>
   )
 } 

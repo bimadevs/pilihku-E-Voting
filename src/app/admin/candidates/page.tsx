@@ -6,6 +6,7 @@ import { toast, Toaster } from 'react-hot-toast'
 import Image from 'next/image'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { CheckCircle, AlertCircle, XCircle } from 'lucide-react'
+import { ConfirmationDialog } from '../voters/components/ConfirmationDialog'
 
 interface Candidate {
   id: string
@@ -70,6 +71,12 @@ export default function CandidatesPage() {
   })
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    type: 'single' as 'single' | 'multiple' | 'all',
+    id: '',
+    count: 0
+  })
 
   useEffect(() => {
     fetchCandidates()
@@ -205,14 +212,23 @@ export default function CandidatesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Yakin ingin menghapus kandidat ini?')) return
+    setConfirmDialog({
+      isOpen: true,
+      type: 'single',
+      id,
+      count: 1
+    })
+  }
 
+  async function handleConfirmDelete() {
+    if (!confirmDialog.id) return
+    
     try {
       // 1. Dapatkan data kandidat untuk mendapatkan path foto
       const { data: candidate, error: fetchError } = await supabaseClient
         .from('candidates')
         .select('*')
-        .eq('id', id)
+        .eq('id', confirmDialog.id)
         .single()
 
       if (fetchError) {
@@ -255,7 +271,7 @@ export default function CandidatesPage() {
       const { error: votesError } = await supabaseClient
         .from('votes')
         .delete()
-        .eq('candidate_id', id)
+        .eq('candidate_id', confirmDialog.id)
 
       if (votesError) {
         throw new Error('Gagal menghapus data voting')
@@ -265,7 +281,7 @@ export default function CandidatesPage() {
       const { error: deleteError } = await supabaseClient
         .from('candidates')
         .delete()
-        .eq('id', id)
+        .eq('id', confirmDialog.id)
 
       if (deleteError) {
         throw new Error('Gagal menghapus data kandidat')
@@ -694,6 +710,16 @@ export default function CandidatesPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        <ConfirmationDialog
+          isOpen={confirmDialog.isOpen}
+          onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={handleConfirmDelete}
+          title="Hapus Data Kandidat"
+          message="Anda yakin ingin menghapus data kandidat ini? Semua data terkait termasuk foto dan data voting akan ikut terhapus."
+          type="single"
+          count={1}
+        />
       </div>
     </div>
   )
