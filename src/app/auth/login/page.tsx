@@ -67,7 +67,7 @@ export default function VoterLogin() {
               transition={{ delay: 0.2 }}
               className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600"
             >
-              E-Voting OSIS
+              PilihKu E-Voting
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}

@@ -360,6 +360,7 @@ export default function CandidatesPage() {
                       ketua_name: e.target.value
                     }))}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
                   />
                 </div>
                 <div>
@@ -375,6 +376,7 @@ export default function CandidatesPage() {
                       ketua_class: e.target.value
                     }))}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
                   />
                 </div>
                 <div>
@@ -392,7 +394,8 @@ export default function CandidatesPage() {
                     className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 
                              file:rounded-xl file:border-0 file:text-sm file:font-semibold
                              file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
+                    autoComplete="off"
+                 />
                 </div>
               </div>
 
@@ -412,6 +415,7 @@ export default function CandidatesPage() {
                       wakil_name: e.target.value
                     }))}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
                   />
                 </div>
                 <div>
@@ -427,6 +431,7 @@ export default function CandidatesPage() {
                       wakil_class: e.target.value
                     }))}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
                   />
                 </div>
                 <div>
@@ -444,6 +449,7 @@ export default function CandidatesPage() {
                     className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 
                              file:rounded-xl file:border-0 file:text-sm file:font-semibold
                              file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -464,6 +470,7 @@ export default function CandidatesPage() {
                   }))}
                   rows={3}
                   className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
                 />
               </div>
               <div>
@@ -479,6 +486,7 @@ export default function CandidatesPage() {
                   }))}
                   rows={3}
                   className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
                 />
               </div>
               <div>
@@ -494,6 +502,7 @@ export default function CandidatesPage() {
                   }))}
                   rows={3}
                   className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
                 />
               </div>
             </div>
