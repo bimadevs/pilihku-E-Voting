@@ -1,10 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabaseClient } from '@/lib/auth'
 import { Bar, Doughnut, Line } from 'react-chartjs-2'
-import { useReactToPrint } from 'react-to-print'
-import Papa from 'papaparse'
 import { toast, Toaster } from 'react-hot-toast'
 import {
   Chart as ChartJS,
@@ -21,6 +19,8 @@ import {
 } from 'chart.js'
 import { motion } from 'framer-motion'
 import { Download, Printer, TrendingUp, Users, CheckCircle, Clock } from 'lucide-react'
+import { utils } from 'xlsx'
+import { writeFile } from 'xlsx'
 
 // Register ChartJS components
 ChartJS.register(
@@ -52,6 +52,14 @@ interface VotingStats {
     hour: string
     count: number
   }[]
+}
+
+interface ClassStats {
+  className: string
+  totalStudents: number
+  votedCount: number
+  notVotedCount: number
+  percentage: number
 }
 
 // Custom Toast Component
@@ -87,16 +95,27 @@ const showNotification = (message: string, type: 'success' | 'error' | 'info' = 
 }
 
 export default function ResultsPage() {
-  const printRef = useRef<HTMLDivElement>(null)
   const [stats, setStats] = useState<VotingStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('overview')
+  const [classStats, setClassStats] = useState<ClassStats[]>([])
+  const [classFilter, setClassFilter] = useState('')
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof ClassStats
+    direction: 'asc' | 'desc'
+  }>({
+    key: 'className',
+    direction: 'asc'
+  })
 
   useEffect(() => {
     fetchVotingResults()
+    fetchClassStats()
     const interval = setInterval(fetchVotingResults, 30000) // Refresh every 30 seconds
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+    }
   }, [])
 
   async function fetchVotingResults() {
@@ -177,65 +196,120 @@ export default function ResultsPage() {
     }
   }
 
+  async function fetchClassStats() {
+    try {
+      const { data: voters, error } = await supabaseClient
+        .from('voters')
+        .select('class, has_voted')
+        .order('class')
+
+      if (error) throw error
+
+      const classMap = new Map<string, { total: number; voted: number }>()
+
+      voters?.forEach(voter => {
+        const currentClass = classMap.get(voter.class) || { total: 0, voted: 0 }
+        classMap.set(voter.class, {
+          total: currentClass.total + 1,
+          voted: currentClass.voted + (voter.has_voted ? 1 : 0)
+        })
+      })
+
+      const formattedStats = Array.from(classMap.entries()).map(([className, stats]) => ({
+        className,
+        totalStudents: stats.total,
+        votedCount: stats.voted,
+        notVotedCount: stats.total - stats.voted,
+        percentage: stats.total === 0 ? 0 : Number(((stats.voted / stats.total) * 100).toFixed(2))
+      }))
+
+      setClassStats(formattedStats.sort((a, b) => a.className.localeCompare(b.className)))
+
+    } catch (error) {
+      console.error('Error fetching class stats:', error)
+      toast.error('Gagal memuat statistik kelas')
+    }
+  }
+
   const handleCSVDownload = () => {
     if (!stats) return
 
     try {
-      // Format tanggal untuk nama file
-      const date = new Date().toLocaleDateString('id-ID').replace(/\//g, '-')
-      
-      // Persiapkan data untuk CSV
-      const csvData = [
-        ['Statistik Pemilihan OSIS'],
-        ['Tanggal Export', new Date().toLocaleString('id-ID')],
-        [''],
-        ['Statistik Umum'],
-        ['Total Pemilih', stats.totalVoters.toString()],
-        ['Sudah Memilih', stats.votedCount.toString()],
-        ['Belum Memilih', stats.notVotedCount.toString()],
-        ['Persentase Partisipasi', `${stats.votingPercentage.toFixed(2)}%`],
-        [''],
-        ['Hasil Per Kandidat'],
-        ['Nomor Urut', 'Ketua', 'Wakil', 'Jumlah Suara', 'Persentase'],
-        ...stats.candidateResults.map(result => [
-          `Paslon ${result.candidateNumber}`,
-          result.ketuaName,
-          result.wakilName,
-          result.voteCount.toString(),
-          `${result.percentage.toFixed(2)}%`
-        ]),
-        [''],
-        ['Tren Voting per Jam'],
-        ['Jam', 'Jumlah Suara'],
-        ...(stats.votingHistory?.map(history => [
-          history.hour,
-          history.count.toString()
-        ]) || [])
-      ]
+      // Data voting per kandidat
+      const candidateData = stats.candidateResults.map(result => ({
+        'Nomor Urut': result.candidateNumber,
+        'Nama Ketua': result.ketuaName,
+        'Nama Wakil': result.wakilName,
+        'Jumlah Suara': result.voteCount,
+        'Persentase': `${result.percentage.toFixed(1)}%`
+      }))
 
-      // Konversi ke CSV menggunakan Papa Parse
-      const csv = Papa.unparse(csvData)
-      
-      // Buat dan unduh file
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      const url = URL.createObjectURL(blob)
-      
-      link.setAttribute('href', url)
-      link.setAttribute('download', `hasil-voting-osis-${date}.csv`)
-      link.style.visibility = 'hidden'
-      
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      // Data statistik per kelas
+      const classData = classStats.map(stat => ({
+        'Kelas': stat.className,
+        'Total Siswa': stat.totalStudents,
+        'Sudah Memilih': stat.votedCount,
+        'Belum Memilih': stat.notVotedCount,
+        'Persentase Partisipasi': `${stat.percentage}%`
+      }))
 
-      // Tampilkan notifikasi sukses
-      showNotification('Data hasil voting berhasil diexport', 'success')
+      // Data ringkasan
+      const summaryData = [{
+        'Total Pemilih': stats.totalVoters,
+        'Sudah Memilih': stats.votedCount,
+        'Belum Memilih': stats.notVotedCount,
+        'Persentase Partisipasi': `${stats.votingPercentage.toFixed(1)}%`
+      }]
+
+      // Buat workbook baru
+      const wb = utils.book_new()
+
+      // Tambahkan semua sheet
+      utils.book_append_sheet(wb, utils.json_to_sheet(candidateData), 'Hasil Voting')
+      utils.book_append_sheet(wb, utils.json_to_sheet(classData), 'Statistik Kelas')
+      utils.book_append_sheet(wb, utils.json_to_sheet(summaryData), 'Ringkasan')
+
+      // Download file
+      const date = new Date().toISOString().split('T')[0]
+      writeFile(wb, `hasil-pemilihan-${date}.xlsx`)
+
+      toast.success('Data berhasil diexport')
     } catch (error) {
       console.error('Error exporting data:', error)
-      showNotification('Gagal mengexport data hasil voting', 'error')
+      toast.error('Gagal mengexport data')
     }
   }
+
+  // Fungsi untuk sorting
+  const handleSort = (key: keyof ClassStats) => {
+    setSortConfig({
+      key,
+      direction: 
+        sortConfig.key === key && sortConfig.direction === 'asc' 
+          ? 'desc' 
+          : 'asc'
+    })
+  }
+
+  // Filter dan sort data
+  const filteredAndSortedClassStats = useMemo(() => {
+    let filtered = classStats
+    
+    // Apply filter
+    if (classFilter) {
+      filtered = classStats.filter(stat => 
+        stat.className.toLowerCase().includes(classFilter.toLowerCase())
+      )
+    }
+
+    // Apply sorting
+    return filtered.sort((a, b) => {
+      if (sortConfig.direction === 'asc') {
+        return a[sortConfig.key] > b[sortConfig.key] ? 1 : -1
+      }
+      return a[sortConfig.key] < b[sortConfig.key] ? 1 : -1
+    })
+  }, [classStats, classFilter, sortConfig])
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -313,7 +387,7 @@ export default function ResultsPage() {
             className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
             <Download className="w-5 h-5 mr-2" />
-            Export CSV
+            Export Data
           </motion.button>
         </div>
 
@@ -517,6 +591,113 @@ export default function ResultsPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Statistik Per Kelas */}
+        <div className="mt-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-900">Statistik Per Kelas</h2>
+            <div className="flex items-center gap-2">
+              <label htmlFor="classFilter" className="text-sm text-gray-600">
+                Cari Kelas:
+              </label>
+              <input
+                id="classFilter"
+                type="text"
+                value={classFilter}
+                onChange={(e) => setClassFilter(e.target.value)}
+                placeholder="Cari kelas..."
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {[
+                      { key: 'className', label: 'Kelas' },
+                      { key: 'totalStudents', label: 'Total Siswa' },
+                      { key: 'votedCount', label: 'Sudah Memilih' },
+                      { key: 'notVotedCount', label: 'Belum Memilih' },
+                      { key: 'percentage', label: 'Persentase' }
+                    ].map(({ key, label }) => (
+                      <th
+                        key={key}
+                        onClick={() => handleSort(key as keyof ClassStats)}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      >
+                        <div className="flex items-center gap-1">
+                          {label}
+                          {sortConfig.key === key && (
+                            <span>
+                              {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredAndSortedClassStats.map((stat) => (
+                    <tr key={stat.className} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {stat.className}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {stat.totalStudents}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
+                        {stat.votedCount}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
+                        {stat.notVotedCount}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2 max-w-[100px]">
+                            <div
+                              className="bg-blue-600 h-2.5 rounded-full"
+                              style={{ width: `${stat.totalStudents === 0 ? 0 : stat.percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-gray-900">
+                            {stat.totalStudents === 0 ? '0%' : `${stat.percentage}%`}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                {/* Footer untuk menampilkan total */}
+                <tfoot className="bg-gray-50">
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      Total
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                      {filteredAndSortedClassStats.reduce((sum, stat) => sum + stat.totalStudents, 0)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
+                      {filteredAndSortedClassStats.reduce((sum, stat) => sum + stat.votedCount, 0)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
+                      {filteredAndSortedClassStats.reduce((sum, stat) => sum + stat.notVotedCount, 0)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                      {(() => {
+                        const totalStudents = filteredAndSortedClassStats.reduce((sum, stat) => sum + stat.totalStudents, 0)
+                        const totalVoted = filteredAndSortedClassStats.reduce((sum, stat) => sum + stat.votedCount, 0)
+                        return totalStudents === 0 ? '0%' : `${((totalVoted / totalStudents) * 100).toFixed(1)}%`
+                      })()}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         </div>
       </div>

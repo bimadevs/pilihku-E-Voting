@@ -46,49 +46,43 @@ export default function SettingsPage() {
       // Fetch votes count
       const { data: votesData, error: votesError } = await supabaseClient
         .from('votes')
-        .select(`
-          candidate_id,
-          candidates (
-            id,
-            ketua_name,
-            wakil_name
-          )
-        `)
+        .select('candidate_id')
 
       if (votesError) throw votesError
 
-      // Calculate results
-      const results = votesData.reduce((acc: any, vote: any) => {
-        const candidateId = vote.candidate_id
-        if (!acc[candidateId]) {
-          acc[candidateId] = {
-            candidate_id: candidateId,
-            ketua_name: vote.candidates.ketua_name,
-            wakil_name: vote.candidates.wakil_name,
-            vote_count: 0
-          }
-        }
-        acc[candidateId].vote_count++
+      const totalVotes: number = votesData?.length ?? 0
+
+      // Hitung votes per kandidat
+      const voteCount = votesData?.reduce((acc: { [key: string]: number }, vote) => {
+        acc[vote.candidate_id] = (acc[vote.candidate_id] || 0) + 1
         return acc
-      }, {})
+      }, {}) ?? {}
 
-      // Convert to array and calculate percentages
-      const totalVotes = Object.values(results).reduce((sum: any, result: any) => sum + result.vote_count, 0)
-      const resultsArray = Object.values(results).map((result: any) => ({
-        ...result,
-        percentage: ((result.vote_count / (totalVotes as number)) * 100).toFixed(2)
-      }))
+      // Fetch candidates
+      const { data: candidates, error: candidatesError } = await supabaseClient
+        .from('candidates')
+        .select('*')
+        .order('candidate_number')
 
-      // Sort by vote count
-      const sortedResults = resultsArray.sort((a: any, b: any) => b.vote_count - a.vote_count)
+      if (candidatesError) throw candidatesError
+
+      const resultsArray = candidates?.map(candidate => ({
+        candidate_id: candidate.id,
+        candidate_number: candidate.candidate_number,
+        ketua_name: candidate.ketua_name,
+        wakil_name: candidate.wakil_name,
+        vote_count: voteCount[candidate.id] || 0,
+        percentage: totalVotes === 0 ? 0 : Number(((voteCount[candidate.id] || 0) / totalVotes * 100).toFixed(2))
+      })) ?? []
+
+      const sortedResults = resultsArray.sort((a, b) => b.vote_count - a.vote_count)
       setVotingResults(sortedResults)
 
-      // Automatically set winner as the candidate with most votes
       if (sortedResults.length > 0) {
         setWinnerId(sortedResults[0].candidate_id)
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching results:', error)
       toast.error('Gagal memuat hasil voting')
     }
@@ -99,6 +93,8 @@ export default function SettingsPage() {
       const { data: existingData, error: checkError } = await supabaseClient
         .from('settings')
         .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
 
       if (checkError) throw checkError
 
@@ -127,7 +123,7 @@ export default function SettingsPage() {
           setAnnouncementTime('')
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in fetchSettings:', error)
       toast.error('Gagal memuat pengaturan')
     }
@@ -203,6 +199,31 @@ export default function SettingsPage() {
     }
   }
 
+  // Fungsi untuk menyimpan pengaturan
+  async function handleSaveSettings() {
+    try {
+      if (!settingsId) {
+        toast.error('ID pengaturan tidak ditemukan')
+        return
+      }
+
+      const { error } = await supabaseClient
+        .from('settings')
+        .update({
+          announcement_time: announcementTime || null,
+          winner_id: winnerId
+        })
+        .eq('id', settingsId)
+
+      if (error) throw error
+
+      toast.success('Pengaturan berhasil disimpan')
+    } catch (error: any) {
+      console.error('Error saving settings:', error)
+      toast.error('Gagal menyimpan pengaturan')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -238,7 +259,7 @@ export default function SettingsPage() {
                     <div>
                       <p className="text-sm text-gray-500">Kandidat Terdepan</p>
                       <p className="text-lg font-semibold text-gray-900">
-                        {votingResults[0].ketua_name}
+                        {votingResults[0]?.ketua_name || 'Belum ada data'}
                       </p>
                     </div>
                   </div>

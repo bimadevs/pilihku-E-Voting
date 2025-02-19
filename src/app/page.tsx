@@ -9,6 +9,7 @@ import { BsGraphUp } from 'react-icons/bs'
 import { Loader2 } from 'lucide-react'
 import { supabaseClient } from '@/lib/auth'
 import WinnerAnnouncement from '@/components/WinnerAnnouncement'
+import toast from 'react-hot-toast'
 
 interface Candidate {
   id: string
@@ -45,15 +46,19 @@ export default function HomePage() {
 
   async function fetchSettings() {
     try {
-      // Periksa apakah tabel settings sudah memiliki data
-      const { data: existingData, error: checkError } = await supabaseClient
+      console.log('Fetching settings...')
+
+      // Ambil semua data settings terlebih dahulu
+      const { data: allSettings, error: fetchError } = await supabaseClient
         .from('settings')
         .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
 
-      if (checkError) throw checkError
+      if (fetchError) throw fetchError
 
-      // Jika belum ada data, buat data baru
-      if (!existingData || existingData.length === 0) {
+      // Jika tidak ada data sama sekali, buat baru
+      if (!allSettings || allSettings.length === 0) {
         const { data: newData, error: insertError } = await supabaseClient
           .from('settings')
           .insert([{
@@ -65,15 +70,39 @@ export default function HomePage() {
 
         if (insertError) throw insertError
 
-        setSettings(newData || { announcement_time: null, winner_id: null })
-      } else {
-        // Jika sudah ada data, gunakan data pertama
-        setSettings(existingData[0] || { announcement_time: null, winner_id: null })
+        setSettings({
+          announcement_time: null,
+          winner_id: null
+        })
+        return
       }
-    } catch (error) {
-      console.error('Error fetching settings:', error)
-      // Set default state jika terjadi error
-      setSettings({ announcement_time: null, winner_id: null })
+
+      // Gunakan data settings terbaru
+      const latestSettings = allSettings[0]
+      const formattedSettings = {
+        announcement_time: latestSettings.announcement_time 
+          ? new Date(latestSettings.announcement_time).toISOString() 
+          : null,
+        winner_id: latestSettings.winner_id
+      }
+
+      console.log('Formatted settings:', formattedSettings)
+      setSettings(formattedSettings)
+
+    } catch (error: any) {
+      console.error('Error detail:', {
+        message: error.message,
+        name: error.name,
+        code: error.code,
+        stack: error.stack
+      })
+      
+      setSettings({ 
+        announcement_time: null, 
+        winner_id: null 
+      })
+      
+      toast.error(error.message || "Gagal memuat pengaturan")
     }
   }
 
@@ -143,9 +172,11 @@ export default function HomePage() {
       </div>
 
       {/* Winner Announcement Section */}
-      {settings?.announcement_time && settings?.winner_id && (
+      {settings?.announcement_time && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <WinnerAnnouncement announcementTime={settings.announcement_time} />
+          <WinnerAnnouncement 
+            announcementTime={settings.announcement_time} 
+          />
         </div>
       )}
 

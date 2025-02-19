@@ -54,8 +54,7 @@ export default function WinnerAnnouncement({ announcementTime }: WinnerAnnouncem
       // Cek apakah masih ada data kandidat
       const { data: candidates, error: candidatesError } = await supabaseClient
         .from('candidates')
-        .select('count')
-        .single()
+        .select('id')
 
       if (candidatesError) throw candidatesError
 
@@ -68,46 +67,51 @@ export default function WinnerAnnouncement({ announcementTime }: WinnerAnnouncem
       if (settingsError) throw settingsError
 
       // Jika tidak ada kandidat atau pengaturan sudah di-reset
-      if (!candidates.count || !settings.announcement_time || !settings.winner_id) {
+      if (!candidates?.length || !settings?.announcement_time || !settings?.winner_id) {
         setIsAnnouncementActive(false)
         setShowWinner(false)
         setShowConfetti(false)
-      } else {
-        setIsAnnouncementActive(true)
+        return
       }
-    } catch (error) {
-      console.error('Error checking announcement status:', error)
+
+      setIsAnnouncementActive(true)
+    } catch (error: any) {
+      console.error('Error checking announcement status:', error.message)
       setIsAnnouncementActive(false)
     }
   }
 
   async function fetchWinner() {
     try {
-      const { data: settings } = await supabaseClient
+      const { data: settings, error: settingsError } = await supabaseClient
         .from('settings')
         .select('winner_id')
         .single()
 
-      if (settings?.winner_id) {
-        const { data: winner } = await supabaseClient
-          .from('candidates')
-          .select('*')
-          .eq('id', settings.winner_id)
-          .single()
+      if (settingsError) throw settingsError
 
-        if (winner) {
-          setWinner(winner)
-          setShowWinner(true)
-          setShowConfetti(true)
-        } else {
-          // Jika pemenang tidak ditemukan, sembunyikan pengumuman
-          setIsAnnouncementActive(false)
-          setShowWinner(false)
-          setShowConfetti(false)
-        }
+      if (!settings?.winner_id) {
+        setIsAnnouncementActive(false)
+        return
       }
-    } catch (error) {
-      console.error('Error fetching winner:', error)
+
+      const { data: winner, error: winnerError } = await supabaseClient
+        .from('candidates')
+        .select('*')
+        .eq('id', settings.winner_id)
+        .single()
+
+      if (winnerError) throw winnerError
+
+      if (winner) {
+        setWinner(winner)
+        setShowWinner(true)
+        setShowConfetti(true)
+      } else {
+        setIsAnnouncementActive(false)
+      }
+    } catch (error: any) {
+      console.error('Error fetching winner:', error.message)
       setIsAnnouncementActive(false)
     }
   }
