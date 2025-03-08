@@ -14,8 +14,8 @@ export async function middleware(req: NextRequest) {
 
     const pathname = req.nextUrl.pathname
 
-    // Izinkan akses ke halaman login
-    if (pathname === '/auth/login' || pathname === '/admin/login') {
+    // Izinkan akses ke halaman login admin
+    if (pathname === '/admin/login') {
       return res
     }
 
@@ -25,6 +25,31 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/admin/login', req.url))
       }
       return res
+    }
+
+    // Cek jadwal voting untuk halaman auth/login dan vote
+    if (pathname === '/auth/login' || pathname.startsWith('/vote')) {
+      // Ambil jadwal voting yang aktif
+      const { data: schedule } = await supabase
+        .from('voting_schedule')
+        .select('*')
+        .eq('is_active', true)
+        .single()
+
+      const now = new Date()
+      
+      // Jika tidak ada jadwal atau di luar jadwal, redirect ke homepage dengan pesan
+      if (!schedule || now < new Date(schedule.start_time) || now > new Date(schedule.end_time)) {
+        const message = !schedule 
+          ? 'Jadwal voting belum ditentukan'
+          : now < new Date(schedule.start_time)
+          ? 'Voting belum dimulai'
+          : 'Voting telah berakhir'
+          
+        return NextResponse.redirect(
+          new URL(`/?message=${encodeURIComponent(message)}`, req.url)
+        )
+      }
     }
 
     // Proteksi route voting

@@ -31,6 +31,15 @@ export interface Database {
           created_at: string
         }
       }
+      voting_schedule: {
+        Row: {
+          id: string
+          start_time: string
+          end_time: string
+          is_active: boolean
+          created_at: string
+        }
+      }
     }
   }
 } 

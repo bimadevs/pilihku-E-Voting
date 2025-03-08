@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react'
 import { supabaseClient } from '@/lib/auth'
 import WinnerAnnouncement from '@/components/WinnerAnnouncement'
 import toast from 'react-hot-toast'
+import { useSearchParams } from 'next/navigation'
 
 interface Candidate {
   id: string
@@ -38,6 +39,14 @@ export default function HomePage() {
     announcement_time: null,
     winner_id: null
   })
+  const searchParams = useSearchParams()
+  const message = searchParams.get('message')
+
+  useEffect(() => {
+    if (message) {
+      toast.error(message)
+    }
+  }, [message])
 
   useEffect(() => {
     fetchCandidates()

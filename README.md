@@ -165,6 +165,37 @@ create table public.votes (
 ) TABLESPACE pg_default;
 ```
 
+### Tabel `voting_schedule`
+```sql
+create table public.voting_schedule (
+  id uuid not null default extensions.uuid_generate_v4(),
+  start_time timestamp with time zone not null,
+  end_time timestamp with time zone not null,
+  is_active boolean not null default true,
+  created_at timestamp with time zone not null default timezone('utc'::text, now()),
+  constraint voting_schedule_pkey primary key (id)
+) tablespace pg_default;
+
+-- Hanya satu jadwal yang bisa aktif
+create unique index if not exists voting_schedule_active_idx on public.voting_schedule (is_active) where (is_active = true);
+
+-- RLS Policies untuk voting_schedule
+alter table public.voting_schedule enable row level security;
+
+-- Policy untuk membaca jadwal (publik)
+create policy "Jadwal dapat dibaca oleh semua pengguna"
+on public.voting_schedule for select
+to public
+using (true);
+
+-- Policy untuk menambah/mengubah jadwal (admin only)
+create policy "Hanya admin yang dapat mengatur jadwal"
+on public.voting_schedule for all
+to authenticated
+using (true)
+with check (true);
+```
+
 ### Tabel `settings`
 ```sql
 create table public.settings (
