@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabaseClient } from '@/lib/auth'
 import { toast } from 'react-hot-toast'
 import Papa from 'papaparse'
+import * as XLSX from 'xlsx'
 import { Spinner } from '@/app/admin/voters/components/spinner'
 import { CheckCircle, AlertCircle, XCircle } from 'lucide-react'
 import { ConfirmationDialog } from './components/ConfirmationDialog'
@@ -16,7 +17,7 @@ interface Voter {
   has_voted: boolean
 }
 
-interface CSVVoter {
+interface ExcelVoter {
   nis: string
   full_name: string
   class: string
@@ -97,16 +98,16 @@ export default function VotersPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedVoters, loading])
 
-  // Fungsi untuk memvalidasi data CSV
-  function validateCSVData(data: CSVVoter): string | null {
+  // Fungsi untuk memvalidasi data Excel
+  function validateExcelData(data: ExcelVoter): string | null {
     if (!data.nis) return 'NIS tidak boleh kosong'
     if (!data.full_name) return 'Nama lengkap tidak boleh kosong'
     if (!data.class) return 'Kelas tidak boleh kosong'
     return null
   }
 
-  // Fungsi untuk menghandle import CSV
-  async function handleCSVImport(event: React.ChangeEvent<HTMLInputElement>) {
+  // Fungsi untuk menghandle import Excel
+  async function handleExcelImport(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -116,76 +117,82 @@ export default function VotersPage() {
     let errorCount = 0
 
     try {
-      const text = await file.text()
+      const arrayBuffer = await file.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
       
-      Papa.parse<CSVVoter>(text, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-          try {
-            const { data } = results
-
-            for (const row of data) {
-              const validationError = validateCSVData(row)
-              if (validationError) {
-                console.error(`Baris dengan NIS ${row.nis}: ${validationError}`)
-                errorCount++
-                continue
-              }
-
-              try {
-                // Cek duplikat NIS
-                const { data: existingVoter } = await supabaseClient
-                  .from('voters')
-                  .select('id')
-                  .eq('nis', row.nis)
-                  .single()
-
-                if (existingVoter) {
-                  console.log(`NIS ${row.nis} sudah terdaftar`)
-                  duplicateCount++
-                  continue
-                }
-
-                const { error } = await supabaseClient
-                  .from('voters')
-                  .insert([{
-                    nis: row.nis,
-                    full_name: row.full_name,
-                    class: row.class,
-                    has_voted: false
-                  }])
-
-                if (error) throw error
-                successCount++
-              } catch (error) {
-                console.error(`Error importing row ${row.nis}:`, error)
-                errorCount++
-              }
-            }
-
-            // Tampilkan notifikasi hasil import
-            showNotification(
-              `Import selesai:\n${successCount} berhasil\n${duplicateCount} duplikat\n${errorCount} gagal`,
-              successCount > 0 ? 'success' : 'error'
-            )
-            
-            await fetchVoters()
-          } catch (error) {
-            showNotification('Gagal mengimpor data', 'error')
-          } finally {
-            setIsImporting(false)
-            if (fileInputRef.current) fileInputRef.current.value = ''
-          }
-        },
-        error: (error: Error) => {
-          showNotification('File CSV tidak valid', 'error')
-          setIsImporting(false)
+      // Ambil worksheet pertama
+      const worksheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[worksheetName]
+      
+      // Convert ke JSON dengan header
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+      
+      // Skip header row dan process data
+      const dataRows = jsonData.slice(1) as string[][]
+      
+      for (const row of dataRows) {
+        // Skip empty rows
+        if (!row || row.length === 0 || !row[0]) continue
+        
+        // Map Excel columns to our data structure
+        // Template: ['NIS', 'Nama Lengkap', 'Kelas']
+        const rowData: ExcelVoter = {
+          nis: String(row[0] || '').trim(),
+          full_name: String(row[1] || '').trim(),
+          class: String(row[2] || '').trim()
         }
-      })
+
+        const validationError = validateExcelData(rowData)
+        if (validationError) {
+          console.error(`Baris dengan NIS ${rowData.nis}: ${validationError}`)
+          errorCount++
+          continue
+        }
+
+        try {
+          // Cek duplikat NIS
+          const { data: existingVoter } = await supabaseClient
+            .from('voters')
+            .select('id')
+            .eq('nis', rowData.nis)
+            .single()
+
+          if (existingVoter) {
+            console.log(`NIS ${rowData.nis} sudah terdaftar`)
+            duplicateCount++
+            continue
+          }
+
+          const { error } = await supabaseClient
+            .from('voters')
+            .insert([{
+              nis: rowData.nis,
+              full_name: rowData.full_name,
+              class: rowData.class,
+              has_voted: false
+            }])
+
+          if (error) throw error
+          successCount++
+        } catch (error) {
+          console.error(`Error importing row ${rowData.nis}:`, error)
+          errorCount++
+        }
+      }
+
+      // Tampilkan notifikasi hasil import
+      showNotification(
+        `Import selesai: ${successCount} berhasil, ${duplicateCount} duplikat, ${errorCount} gagal`,
+        successCount > 0 ? 'success' : 'error'
+      )
+      
+      await fetchVoters()
     } catch (error) {
-      showNotification('Gagal membaca file', 'error')
+      console.error('Error importing Excel:', error)
+      showNotification('File Excel tidak valid atau terjadi kesalahan', 'error')
+    } finally {
       setIsImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -340,25 +347,50 @@ export default function VotersPage() {
     }
   }
 
-  // Fungsi untuk men-download template CSV
+  // Fungsi untuk men-download template Excel
   function handleDownloadTemplate() {
     try {
-      const csvContent = `nis,full_name,class
-123456,Bima Jovanta,XII TJKT
-123444,Erik Wong,XII TJKT
-123333,Felisitas Alverina,XI AKL 2
-122222,Gina Putri,XII AKL 1
-123453,Hendra Prasetyo,X AKL 1`;
+      // Data template dengan header dan contoh data
+      const templateData = [
+        ['NIS', 'Nama Lengkap', 'Kelas'], // Header
+        ['123456', 'Bima Jovanta', 'XII TJKT'],
+        ['123444', 'Erik Wong', 'XII TJKT'],
+        ['123333', 'Felisitas Alverina', 'XI AKL 2'],
+        ['122222', 'Gina Putri', 'XII AKL 1'],
+        ['123453', 'Hendra Prasetyo', 'X AKL 1']
+      ];
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'template_pemilih.csv';
-      link.click();
-      URL.revokeObjectURL(link.href);
+      // Buat workbook dan worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.aoa_to_sheet(templateData);
 
-      showNotification('Template berhasil diunduh', 'success')
+      // Set lebar kolom agar lebih rapi
+      worksheet['!cols'] = [
+        { width: 15 }, // NIS
+        { width: 25 }, // Nama Lengkap
+        { width: 15 }  // Kelas
+      ];
+
+      // Style header (bold)
+      const headerRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:C1');
+      for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+        if (!worksheet[cellAddress]) continue;
+        worksheet[cellAddress].s = {
+          font: { bold: true },
+          fill: { fgColor: { rgb: "E3F2FD" } }
+        };
+      }
+
+      // Tambahkan worksheet ke workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Pemilih');
+
+      // Download file Excel
+      XLSX.writeFile(workbook, 'template_pemilih.xlsx');
+
+      showNotification('Template Excel berhasil diunduh', 'success')
     } catch (error) {
+      console.error('Error downloading template:', error);
       showNotification('Gagal mengunduh template', 'error')
     }
   }
@@ -463,14 +495,14 @@ export default function VotersPage() {
                 className="bg-green-500 text-white py-2 px-4 rounded-xl hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
                 disabled={isImporting}
               >
-                Download Template CSV
+                Download Template Excel
               </button>
               <div className="flex-1">
                 <input
                   type="file"
                   ref={fileInputRef}
-                  accept=".csv"
-                  onChange={handleCSVImport}
+                  accept=".xlsx,.xls"
+                  onChange={handleExcelImport}
                   className="block w-full text-sm text-gray-500
                     file:mr-4 file:py-2 file:px-4
                     file:rounded-xl file:border-0

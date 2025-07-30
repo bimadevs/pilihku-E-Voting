@@ -84,7 +84,7 @@ PilihKu adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OS
 
 1. Clone repository
 ```bash
-git clone https://github.com/username/pilihku.git
+git clone https://github.com/bimadevs/pilihku-E-Voting.git
 cd pilihku
 ```
 
@@ -343,4 +343,4 @@ Untuk pertanyaan dan dukungan, silakan hubungi:
 
 ## 🙏 Ucapan Terima Kasih
 
-Terima kasih kepada semua kontributor dan pengguna yang telah membantu mengembangkan PilihKu.
+Terima kasih kepada tuhan yang maha esa 
