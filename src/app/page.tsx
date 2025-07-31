@@ -245,19 +245,19 @@ export default function HomePage() {
           />
 
           {/* Voting Results - Only show when announcement is active */}
-          <section className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8">
+          <section className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl sm:rounded-3xl p-4 sm:p-8">
             <motion.div
-              className="text-center mb-12"
+              className="text-center mb-8 sm:mb-12"
               variants={fadeInUp}
               initial="initial"
               whileInView="animate"
               viewport={{ once: true }}
             >
-              <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl mb-4">
-                <FaChartBar className="inline-block mr-3 text-blue-600" />
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+                <FaChartBar className="inline-block mr-2 sm:mr-3 text-blue-600 text-xl sm:text-2xl" />
                 Hasil Voting
               </h2>
-              <p className="text-lg text-gray-600">
+              <p className="text-base sm:text-lg text-gray-600">
                 Hasil perolehan suara setiap kandidat
               </p>
             </motion.div>
@@ -278,23 +278,27 @@ export default function HomePage() {
                   <motion.div
                     key={result.candidate.id}
                     variants={fadeInUp}
-                    className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-200"
+                    className="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-200"
                   >
-                    <div className="p-8">
-                      <div className="flex flex-col lg:flex-row items-center gap-8">
-                        {/* Candidate Info */}
-                        <div className="flex items-center gap-6 flex-shrink-0">
-                          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold text-white ${index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
+                    <div className="p-4 sm:p-6 lg:p-8">
+                      {/* Mobile Layout - Stack vertically */}
+                      <div className="flex flex-col space-y-6 lg:flex-row lg:items-center lg:gap-8 lg:space-y-0">
+                        {/* Candidate Info - Mobile Optimized */}
+                        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 flex-shrink-0">
+                          {/* Number Badge */}
+                          <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-2xl font-bold text-white ${index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
                             index === 1 ? 'bg-gradient-to-r from-gray-400 to-gray-600' :
                               'bg-gradient-to-r from-orange-400 to-orange-600'
                             }`}>
                             #{result.candidate.candidate_number}
                           </div>
 
-                          <div className="flex items-center gap-4">
-                            <div className="flex gap-3">
+                          {/* Photos and Names */}
+                          <div className="flex flex-col sm:flex-row items-center gap-4">
+                            {/* Photos */}
+                            <div className="flex gap-3 sm:gap-4">
                               <div className="text-center">
-                                <div className="w-16 h-16 relative rounded-xl overflow-hidden shadow-md">
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 relative rounded-lg sm:rounded-xl overflow-hidden shadow-md">
                                   <Image
                                     src={result.candidate.ketua_photo_url || '/placeholder.jpg'}
                                     alt={result.candidate.ketua_name}
@@ -302,10 +306,10 @@ export default function HomePage() {
                                     className="object-cover"
                                   />
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">Ketua</p>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">Ketua</p>
                               </div>
                               <div className="text-center">
-                                <div className="w-16 h-16 relative rounded-xl overflow-hidden shadow-md">
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 relative rounded-lg sm:rounded-xl overflow-hidden shadow-md">
                                   <Image
                                     src={result.candidate.wakil_photo_url || '/placeholder.jpg'}
                                     alt={result.candidate.wakil_name}
@@ -313,39 +317,40 @@ export default function HomePage() {
                                     className="object-cover"
                                   />
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">Wakil</p>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">Wakil</p>
                               </div>
                             </div>
 
-                            <div>
-                              <h4 className="text-xl font-bold text-gray-900">
+                            {/* Names and Classes */}
+                            <div className="text-center sm:text-left">
+                              <h4 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">
                                 {result.candidate.ketua_name} & {result.candidate.wakil_name}
                               </h4>
-                              <p className="text-gray-600">
+                              <p className="text-sm sm:text-base text-gray-600 mt-1">
                                 {result.candidate.ketua_class} • {result.candidate.wakil_class}
                               </p>
                             </div>
                           </div>
                         </div>
 
-                        {/* Vote Stats */}
+                        {/* Vote Stats - Mobile Optimized */}
                         <div className="flex-1 w-full">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-4">
-                              <span className="text-3xl font-bold text-gray-900">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2 sm:gap-4">
+                              <span className="text-2xl sm:text-3xl font-bold text-gray-900">
                                 {result.voteCount}
                               </span>
-                              <span className="text-lg text-gray-600">suara</span>
+                              <span className="text-base sm:text-lg text-gray-600">suara</span>
                             </div>
                             <div className="text-right">
-                              <span className="text-2xl font-bold text-blue-600">
+                              <span className="text-xl sm:text-2xl font-bold text-blue-600">
                                 {result.percentage.toFixed(1)}%
                               </span>
                             </div>
                           </div>
 
-                          {/* Progress Bar */}
-                          <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                          {/* Progress Bar - Enhanced for Mobile */}
+                          <div className="w-full bg-gray-200 rounded-full h-3 sm:h-4 overflow-hidden">
                             <motion.div
                               className={`h-full rounded-full ${index === 0 ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
                                 index === 1 ? 'bg-gradient-to-r from-green-500 to-green-600' :
@@ -357,21 +362,21 @@ export default function HomePage() {
                               viewport={{ once: true }}
                             />
                           </div>
-                        </div>
 
-                        {/* Winner Badge */}
-                        {index === 0 && result.voteCount > 0 && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            whileInView={{ scale: 1 }}
-                            transition={{ delay: 0.5, type: "spring" }}
-                            className="flex-shrink-0"
-                          >
-                            <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg">
-                              🏆 TERDEPAN
-                            </div>
-                          </motion.div>
-                        )}
+                          {/* Winner Badge - Mobile Positioned */}
+                          {index === 0 && result.voteCount > 0 && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              whileInView={{ scale: 1 }}
+                              transition={{ delay: 0.5, type: "spring" }}
+                              className="flex justify-center lg:justify-end mt-4 lg:mt-0"
+                            >
+                              <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-3 sm:px-4 py-2 rounded-full font-bold text-xs sm:text-sm shadow-lg">
+                                🏆 TERDEPAN
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -464,8 +469,8 @@ export default function HomePage() {
                   <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2">
                     {/* Header with Gradient */}
                     <div className={`relative px-8 py-6 ${index % 2 === 0
-                        ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600'
-                        : 'bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600'
+                      ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600'
+                      : 'bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600'
                       }`}>
                       <div className="absolute inset-0 bg-black/10"></div>
                       <div className="relative flex items-center justify-between">
@@ -489,8 +494,8 @@ export default function HomePage() {
                     </div>
 
                     <div className="p-8">
-                      {/* Candidate Photos */}
-                      <div className="flex justify-center gap-8 mb-8">
+                      {/* Candidate Photos - Mobile Responsive */}
+                      <div className="flex flex-col sm:flex-row justify-center items-center gap-6 sm:gap-8 mb-8">
                         {/* Ketua */}
                         <motion.div
                           className="text-center group/photo"
@@ -498,7 +503,7 @@ export default function HomePage() {
                           transition={{ type: "spring", stiffness: 300 }}
                         >
                           <div className="relative">
-                            <div className="w-28 h-28 relative rounded-2xl overflow-hidden shadow-lg ring-4 ring-white group-hover/photo:ring-blue-200 transition-all duration-300">
+                            <div className="w-24 h-24 sm:w-28 sm:h-28 relative rounded-xl sm:rounded-2xl overflow-hidden shadow-lg ring-4 ring-white group-hover/photo:ring-blue-200 transition-all duration-300">
                               <Image
                                 src={candidate.ketua_photo_url || '/placeholder.jpg'}
                                 alt={candidate.ketua_name}
@@ -506,20 +511,20 @@ export default function HomePage() {
                                 className="object-cover group-hover/photo:scale-110 transition-transform duration-300"
                               />
                             </div>
-                            <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
+                            <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
                               <span className="text-white text-xs font-bold">K</span>
                             </div>
                           </div>
-                          <h4 className="font-bold text-gray-900 text-lg mt-4 group-hover/photo:text-blue-600 transition-colors">
+                          <h4 className="font-bold text-gray-900 text-base sm:text-lg mt-3 sm:mt-4 group-hover/photo:text-blue-600 transition-colors">
                             {candidate.ketua_name}
                           </h4>
-                          <p className="text-sm text-gray-500 font-medium">{candidate.ketua_class}</p>
+                          <p className="text-xs sm:text-sm text-gray-500 font-medium">{candidate.ketua_class}</p>
                           <p className="text-xs text-blue-600 font-semibold mt-1">Calon Ketua</p>
                         </motion.div>
 
-                        {/* Connector */}
+                        {/* Connector - Responsive */}
                         <div className="flex items-center">
-                          <div className="w-12 h-0.5 bg-gradient-to-r from-blue-300 to-indigo-300 relative">
+                          <div className="w-8 h-0.5 sm:w-12 sm:h-0.5 bg-gradient-to-r from-blue-300 to-indigo-300 relative rotate-90 sm:rotate-0">
                             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 animate-pulse"></div>
                           </div>
                         </div>
@@ -531,7 +536,7 @@ export default function HomePage() {
                           transition={{ type: "spring", stiffness: 300 }}
                         >
                           <div className="relative">
-                            <div className="w-28 h-28 relative rounded-2xl overflow-hidden shadow-lg ring-4 ring-white group-hover/photo:ring-indigo-200 transition-all duration-300">
+                            <div className="w-24 h-24 sm:w-28 sm:h-28 relative rounded-xl sm:rounded-2xl overflow-hidden shadow-lg ring-4 ring-white group-hover/photo:ring-indigo-200 transition-all duration-300">
                               <Image
                                 src={candidate.wakil_photo_url || '/placeholder.jpg'}
                                 alt={candidate.wakil_name}
@@ -539,14 +544,14 @@ export default function HomePage() {
                                 className="object-cover group-hover/photo:scale-110 transition-transform duration-300"
                               />
                             </div>
-                            <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                            <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
                               <span className="text-white text-xs font-bold">W</span>
                             </div>
                           </div>
-                          <h4 className="font-bold text-gray-900 text-lg mt-4 group-hover/photo:text-indigo-600 transition-colors">
+                          <h4 className="font-bold text-gray-900 text-base sm:text-lg mt-3 sm:mt-4 group-hover/photo:text-indigo-600 transition-colors">
                             {candidate.wakil_name}
                           </h4>
-                          <p className="text-sm text-gray-500 font-medium">{candidate.wakil_class}</p>
+                          <p className="text-xs sm:text-sm text-gray-500 font-medium">{candidate.wakil_class}</p>
                           <p className="text-xs text-indigo-600 font-semibold mt-1">Calon Wakil</p>
                         </motion.div>
                       </div>
@@ -559,8 +564,8 @@ export default function HomePage() {
                               key={tab}
                               onClick={() => setActiveTab(tab)}
                               className={`flex-1 py-3 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${activeTab === tab
-                                  ? 'bg-white text-blue-600 shadow-md transform scale-105'
-                                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                                ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
                                 }`}
                             >
                               {tab.charAt(0).toUpperCase() + tab.slice(1)}
