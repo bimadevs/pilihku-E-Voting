@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FaVoteYea, FaUserShield, FaCheckCircle, FaUsers, FaHandshake, FaChartBar } from 'react-icons/fa'
-import { BsGraphUp, BsShieldCheck, BsClock, BsPeople } from 'react-icons/bs'
+import { FaVoteYea, FaUserShield, FaCheckCircle, FaUsers, FaChartBar } from 'react-icons/fa'
+import { BsShieldCheck, BsClock, BsPeople } from 'react-icons/bs'
 import { Loader2 } from 'lucide-react'
 import { supabaseClient } from '@/lib/auth'
 import WinnerAnnouncement from '@/components/WinnerAnnouncement'
@@ -43,7 +43,6 @@ const staggerContainer = {
 export default function HomePage() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(true)
-  const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'visi' | 'misi' | 'program kerja'>('visi')
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null)
   const [settings, setSettings] = useState<{ 
@@ -90,9 +89,10 @@ export default function HomePage() {
         announcement_time: latestSettings.announcement_time,
         winner_id: latestSettings.winner_id
       })
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error:', error)
-      toast.error(error.message || "Gagal memuat pengaturan")
+      const message = error instanceof Error ? error.message : 'Gagal memuat pengaturan'
+      toast.error(message)
     }
   }
 
@@ -108,7 +108,7 @@ export default function HomePage() {
       setCandidates(data || [])
     } catch (error) {
       console.error('Error:', error)
-      setError('Gagal memuat data kandidat')
+      toast.error('Gagal memuat data kandidat')
     } finally {
       setIsLoadingCandidates(false)
     }
@@ -122,6 +122,29 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-10"></div>
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+
+          {/* Floating Icons */}
+          <motion.div
+            className="absolute left-10 top-10 text-blue-500/20"
+            animate={{ y: [0, -15, 0] }}
+            transition={{ duration: 6, repeat: Infinity }}
+          >
+            <FaUserShield size={80} />
+          </motion.div>
+          <motion.div
+            className="absolute right-10 bottom-10 text-indigo-500/20"
+            animate={{ y: [0, 15, 0] }}
+            transition={{ duration: 6, repeat: Infinity, delay: 1 }}
+          >
+            <FaUsers size={80} />
+          </motion.div>
+          <motion.div
+            className="absolute left-1/2 -ml-10 bottom-20 text-blue-400/20"
+            animate={{ y: [0, -20, 0] }}
+            transition={{ duration: 7, repeat: Infinity, delay: 2 }}
+          >
+            <FaChartBar size={70} />
+          </motion.div>
         </div>
 
         <div className="max-w-7xl mx-auto py-20 px-4 sm:py-32 sm:px-6 lg:px-8 relative">
@@ -145,7 +168,7 @@ export default function HomePage() {
               Berpartisipasilah dalam pemilihan OSIS dengan jujur dan bijaksana untuk membangun sekolah yang lebih baik
             </motion.p>
             
-            <motion.div 
+            <motion.div
               className="mt-10 flex flex-col sm:flex-row gap-4 justify-center"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -158,6 +181,26 @@ export default function HomePage() {
                 <FaVoteYea className="mr-2 text-xl" />
                 Mulai Voting
               </Link>
+            </motion.div>
+
+            {/* Feature Icons */}
+            <motion.div
+              className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-8 max-w-3xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              {[
+                { icon: <FaUserShield className="w-8 h-8 mb-2 text-blue-600" />, label: 'Aman' },
+                { icon: <FaCheckCircle className="w-8 h-8 mb-2 text-blue-600" />, label: 'Terpercaya' },
+                { icon: <FaChartBar className="w-8 h-8 mb-2 text-blue-600" />, label: 'Transparan' },
+                { icon: <FaUsers className="w-8 h-8 mb-2 text-blue-600" />, label: 'Partisipatif' },
+              ].map((item, idx) => (
+                <div key={idx} className="flex flex-col items-center text-gray-700">
+                  {item.icon}
+                  <span className="text-sm font-medium">{item.label}</span>
+                </div>
+              ))}
             </motion.div>
           </motion.div>
         </div>
