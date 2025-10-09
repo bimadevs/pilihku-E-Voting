@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FaVoteYea, FaUserShield, FaCheckCircle, FaUsers, FaChartBar } from 'react-icons/fa'
+import { FaVoteYea, FaUserShield, FaCheckCircle, FaUsers, FaChartBar, FaUser, FaSearch, FaFlag } from 'react-icons/fa'
 import { BsShieldCheck, BsClock, BsPeople } from 'react-icons/bs'
 import { Loader2 } from 'lucide-react'
 import { supabaseClient } from '@/lib/auth'
@@ -116,34 +116,149 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-indigo-50">
+      {/* Cara Voting Section - At the Top */}
+      <section className="py-20 bg-white/50 backdrop-blur-sm" role="region" aria-labelledby="cara-voting-title">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="text-center mb-16"
+            variants={fadeInUp}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+          >
+            <h2 id="cara-voting-title" className="text-3xl font-bold text-gray-900 sm:text-4xl">
+              Cara Voting
+            </h2>
+            <p className="mt-4 text-lg text-gray-600">
+              Ikuti langkah-langkah berikut untuk memberikan suaramu
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-4 gap-8"
+            variants={staggerContainer}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+          >
+            {[
+              {
+                step: "1",
+                icon: <FaUser className="w-8 h-8 text-blue-600" aria-label="Ikon Login" />,
+                title: "Login",
+                desc: "Masuk menggunakan NIS yang telah terdaftar"
+              },
+              {
+                step: "2",
+                icon: <FaSearch className="w-8 h-8 text-blue-600" aria-label="Ikon Pilih Kandidat" />,
+                title: "Pilih Kandidat",
+                desc: "Pelajari profil setiap kandidat dengan seksama"
+              },
+              {
+                step: "3",
+                icon: <FaCheckCircle className="w-8 h-8 text-blue-600" aria-label="Ikon Konfirmasi" />,
+                title: "Konfirmasi",
+                desc: "Pastikan pilihanmu sudah sesuai"
+              },
+              {
+                step: "4",
+                icon: <FaFlag className="w-8 h-8 text-blue-600" aria-label="Ikon Selesai" />,
+                title: "Selesai",
+                desc: "Suaramu telah tersimpan dengan aman"
+              }
+            ].map((item, index) => (
+              <motion.div
+                key={index}
+                variants={fadeInUp}
+                className="bg-white p-6 rounded-2xl shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-200"
+                tabIndex={0}
+                role="article"
+                aria-labelledby={`step-${index + 1}-title`}
+              >
+                <div className="absolute -right-4 -top-4 w-20 h-20 bg-blue-100 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-200" />
+                <span className="text-6xl font-bold text-blue-100 absolute right-4 top-2 group-hover:scale-110 transition-transform duration-200">
+                  {item.step}
+                </span>
+                <div className="flex items-center mb-4 relative z-10">
+                  {item.icon}
+                  <h3 id={`step-${index + 1}-title`} className="text-xl font-semibold ml-3">{item.title}</h3>
+                </div>
+                <p className="text-gray-600 relative z-10">{item.desc}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
       {/* Hero Section - Modern and Dynamic */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-10"></div>
+          {/* Background Pattern */}
+          <svg className="absolute inset-0 w-full h-full opacity-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+            <defs>
+              <pattern id="dots" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+                <circle cx="5" cy="5" r="1" fill="currentColor" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#dots)" />
+          </svg>
+
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-500 to-indigo-600 opacity-10"></div>
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+          <div className="absolute top-1/2 left-1/4 w-60 h-60 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-blob animation-delay-4000"></div>
+
+          {/* Floating Particles */}
+          <motion.div
+            className="absolute top-20 left-20 w-4 h-4 bg-white rounded-full opacity-20"
+            animate={{ y: [0, -30, 0], x: [0, 20, 0] }}
+            transition={{ duration: 8, repeat: Infinity }}
+          />
+          <motion.div
+            className="absolute bottom-32 right-32 w-3 h-3 bg-white rounded-full opacity-30"
+            animate={{ y: [0, 25, 0], x: [0, -15, 0] }}
+            transition={{ duration: 7, repeat: Infinity, delay: 1 }}
+          />
+          <motion.div
+            className="absolute top-1/3 right-1/4 w-2 h-2 bg-white rounded-full opacity-25"
+            animate={{ y: [0, -20, 0], x: [0, 10, 0] }}
+            transition={{ duration: 9, repeat: Infinity, delay: 2 }}
+          />
 
           {/* Floating Icons */}
           <motion.div
-            className="absolute left-10 top-10 text-blue-500/20"
+            className="absolute left-10 top-10 text-blue-500/20 animate-pulse"
             animate={{ y: [0, -15, 0] }}
             transition={{ duration: 6, repeat: Infinity }}
           >
-            <FaUserShield size={80} />
+            <FaUserShield size={80} aria-label="Ikon Keamanan" />
           </motion.div>
           <motion.div
-            className="absolute right-10 bottom-10 text-indigo-500/20"
+            className="absolute right-10 bottom-10 text-indigo-500/20 animate-pulse"
             animate={{ y: [0, 15, 0] }}
             transition={{ duration: 6, repeat: Infinity, delay: 1 }}
           >
-            <FaUsers size={80} />
+            <FaUsers size={80} aria-label="Ikon Komunitas" />
           </motion.div>
           <motion.div
-            className="absolute left-1/2 -ml-10 bottom-20 text-blue-400/20"
+            className="absolute left-1/2 -ml-10 bottom-20 text-blue-400/20 animate-pulse"
             animate={{ y: [0, -20, 0] }}
             transition={{ duration: 7, repeat: Infinity, delay: 2 }}
           >
-            <FaChartBar size={70} />
+            <FaChartBar size={70} aria-label="Ikon Statistik" />
+          </motion.div>
+          <motion.div
+            className="absolute right-1/3 top-1/4 text-purple-500/15 animate-pulse"
+            animate={{ y: [0, 10, 0], rotate: [0, 5, 0] }}
+            transition={{ duration: 5, repeat: Infinity, delay: 3 }}
+          >
+            <FaVoteYea size={60} aria-label="Ikon Voting" />
+          </motion.div>
+          <motion.div
+            className="absolute left-1/4 bottom-1/3 text-indigo-400/20 animate-pulse"
+            animate={{ y: [0, -10, 0], rotate: [0, -5, 0] }}
+            transition={{ duration: 6, repeat: Infinity, delay: 4 }}
+          >
+            <FaCheckCircle size={50} aria-label="Ikon Verifikasi" />
           </motion.div>
         </div>
 
@@ -401,69 +516,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Steps Section */}
-      <section className="py-20 bg-white/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            className="text-center mb-16"
-            variants={fadeInUp}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-              Cara Voting
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              Ikuti langkah-langkah berikut untuk memberikan suaramu
-            </p>
-          </motion.div>
-
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-4 gap-8"
-            variants={staggerContainer}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-          >
-            {[
-              {
-                step: "1",
-                title: "Login",
-                desc: "Masuk menggunakan NIS yang telah terdaftar"
-              },
-              {
-                step: "2",
-                title: "Pilih Kandidat",
-                desc: "Pelajari profil setiap kandidat dengan seksama"
-              },
-              {
-                step: "3",
-                title: "Konfirmasi",
-                desc: "Pastikan pilihanmu sudah sesuai"
-              },
-              {
-                step: "4",
-                title: "Selesai",
-                desc: "Suaramu telah tersimpan dengan aman"
-              }
-            ].map((item, index) => (
-              <motion.div
-                key={index}
-                variants={fadeInUp}
-                className="bg-white p-6 rounded-2xl shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-200"
-              >
-                <div className="absolute -right-4 -top-4 w-20 h-20 bg-blue-100 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-200" />
-                <span className="text-6xl font-bold text-blue-100 absolute right-4 top-2 group-hover:scale-110 transition-transform duration-200">
-                  {item.step}
-                </span>
-                <h3 className="text-xl font-semibold mb-3 relative z-10">{item.title}</h3>
-                <p className="text-gray-600 relative z-10">{item.desc}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-20">
