@@ -470,6 +470,36 @@ export default function VotersPage() {
     }
   }
 
+  // Fungsi untuk generate nomor halaman dengan ellipsis
+  const generatePageNumbers = (current: number, total: number, delta: number = 2) => {
+    const pages: (number | string)[] = []
+    const range = (start: number, end: number) => Array.from({ length: end - start + 1 }, (_, i) => start + i)
+
+    if (total <= 7) {
+      return range(1, total)
+    }
+
+    pages.push(1)
+
+    const start = Math.max(2, current - delta)
+    const end = Math.min(total - 1, current + delta)
+
+    if (start > 2) {
+      pages.push('...')
+    }
+
+    pages.push(...range(start, end))
+
+    if (end < total - 1) {
+      pages.push('...')
+    }
+
+    if (total > 1) {
+      pages.push(total)
+    }
+
+    return pages
+  }
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
@@ -779,19 +809,23 @@ export default function VotersPage() {
                   >
                     Sebelumnya
                   </button>
-                  <div className="flex items-center gap-2">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-4 py-2 rounded-xl ${
-                          currentPage === page
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 hover:bg-gray-200'
-                        }`}
-                      >
-                        {page}
-                      </button>
+                  <div className="flex items-center gap-2 overflow-x-auto">
+                    {generatePageNumbers(currentPage, totalPages).map((page, index) => (
+                      typeof page === 'string' ? (
+                        <span key={`ellipsis-${index}`} className="px-4 py-2 text-gray-500">...</span>
+                      ) : (
+                        <button
+                          key={`page-${page}`}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-4 py-2 rounded-xl ${
+                            currentPage === page
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 hover:bg-gray-200'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      )
                     ))}
                   </div>
                   <button
