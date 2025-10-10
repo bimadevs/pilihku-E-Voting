@@ -6,47 +6,84 @@ import Confetti from 'react-confetti'
 import { supabaseClient } from '@/lib/auth'
 
 interface WinnerAnnouncementProps {
-  announcementTime: string | null
+  // announcementTime removed, now fetched from settings
 }
 
-export default function WinnerAnnouncement({ announcementTime }: WinnerAnnouncementProps) {
+export default function WinnerAnnouncement({}: WinnerAnnouncementProps) {
   const [timeLeft, setTimeLeft] = useState('')
   const [showWinner, setShowWinner] = useState(false)
   const [winner, setWinner] = useState<any>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [isAnnouncementActive, setIsAnnouncementActive] = useState(true)
+  const [announcementTime, setAnnouncementTime] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!announcementTime) {
-      setIsAnnouncementActive(false)
-      return
+    console.log('WinnerAnnouncement: useEffect triggered')
+    const fetchSettings = async () => {
+      try {
+        const { data: settings, error } = await supabaseClient
+          .from('settings')
+          .select('announcement_time')
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        if (error) throw error
+
+        const fetchedAnnouncementTime = settings?.[0]?.announcement_time
+        console.log('WinnerAnnouncement fetchSettings result:', settings, 'fetchedAnnouncementTime:', fetchedAnnouncementTime)
+        setAnnouncementTime(fetchedAnnouncementTime)
+
+        if (!fetchedAnnouncementTime) {
+          setIsAnnouncementActive(false)
+          return
+        }
+
+        console.log('WinnerAnnouncement: Starting countdown for:', fetchedAnnouncementTime)
+        checkAnnouncementStatus()
+        const timer = setInterval(() => {
+          const now = new Date().getTime()
+          // Konversi waktu ke zona waktu lokal Indonesia
+          const announcementDate = new Date(fetchedAnnouncementTime)
+          const distance = announcementDate.getTime() - now
+
+          if (distance <= 0) {
+            clearInterval(timer)
+            setTimeLeft('0 Detik')
+            setTimeout(() => fetchWinner(), 1000) // Delay 1 detik untuk menampilkan 0 sebelum winner
+            return
+          }
+
+          // Hitung waktu tersisa
+          const days = Math.floor(distance / (1000 * 60 * 60 * 24))
+          const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+          const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+          const seconds = Math.floor((distance % (1000 * 60)) / 1000)
+
+          setTimeLeft(`${days} Hari ${hours} Jam ${minutes} Menit ${seconds} Detik`)
+        }, 1000)
+
+        return () => clearInterval(timer)
+      } catch (error: any) {
+        console.error('WinnerAnnouncement: Error fetching settings:', error.message, error)
+        setIsAnnouncementActive(false)
+      }
     }
 
-    checkAnnouncementStatus()
-    const timer = setInterval(() => {
-      const now = new Date().getTime()
-      // Konversi waktu ke zona waktu lokal Indonesia
-      const announcementDate = new Date(announcementTime)
-      const distance = announcementDate.getTime() - now
+    fetchSettings()
 
-      if (distance < 0) {
-        clearInterval(timer)
-        setTimeLeft('WAKTU HABIS')
-        fetchWinner()
-        return
-      }
+    // Subscribe to settings changes
+    const subscription = supabaseClient
+      .channel('settings_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, (payload) => {
+        console.log('WinnerAnnouncement: Settings changed:', payload)
+        fetchSettings()
+      })
+      .subscribe()
 
-      // Hitung waktu tersisa
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24))
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000)
-
-      setTimeLeft(`${days} Hari ${hours} Jam ${minutes} Menit ${seconds} Detik`)
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [announcementTime])
+    return () => {
+      supabaseClient.removeChannel(subscription)
+    }
+  }, [])
 
   // Fungsi untuk memeriksa status pengumuman
   async function checkAnnouncementStatus() {
@@ -58,16 +95,16 @@ export default function WinnerAnnouncement({ announcementTime }: WinnerAnnouncem
 
       if (candidatesError) throw candidatesError
 
-      // Cek apakah pengaturan masih aktif
       const { data: settings, error: settingsError } = await supabaseClient
         .from('settings')
         .select('announcement_time, winner_id')
-        .single()
 
       if (settingsError) throw settingsError
 
-      // Jika tidak ada kandidat atau pengaturan sudah di-reset
-      if (!candidates?.length || !settings?.announcement_time || !settings?.winner_id) {
+      // Ambil settings pertama jika ada multiple rows
+      const setting = settings?.[0]
+      // Jika tidak ada kandidat atau announcement_time tidak ada, tidak aktif
+      if (!candidates?.length || !setting?.announcement_time) {
         setIsAnnouncementActive(false)
         setShowWinner(false)
         setShowConfetti(false)
@@ -86,11 +123,13 @@ export default function WinnerAnnouncement({ announcementTime }: WinnerAnnouncem
       const { data: settings, error: settingsError } = await supabaseClient
         .from('settings')
         .select('winner_id')
-        .single()
 
       if (settingsError) throw settingsError
 
-      if (!settings?.winner_id) {
+      // Ambil settings pertama
+      const setting = settings?.[0]
+
+      if (!setting?.winner_id) {
         setIsAnnouncementActive(false)
         return
       }
@@ -98,7 +137,7 @@ export default function WinnerAnnouncement({ announcementTime }: WinnerAnnouncem
       const { data: winner, error: winnerError } = await supabaseClient
         .from('candidates')
         .select('*')
-        .eq('id', settings.winner_id)
+        .eq('id', setting.winner_id)
         .single()
 
       if (winnerError) throw winnerError
@@ -123,7 +162,9 @@ export default function WinnerAnnouncement({ announcementTime }: WinnerAnnouncem
   }
 
   // Jika pengumuman tidak aktif, jangan tampilkan apa-apa
+  console.log('WinnerAnnouncement render - isAnnouncementActive:', isAnnouncementActive, 'showWinner:', showWinner, 'timeLeft:', timeLeft)
   if (!isAnnouncementActive) {
+    console.log('WinnerAnnouncement: Not rendering because announcement not active')
     return null
   }
 

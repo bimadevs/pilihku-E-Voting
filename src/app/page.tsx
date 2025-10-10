@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FaVoteYea, FaUserShield, FaCheckCircle, FaUsers, FaHandshake, FaChartBar } from 'react-icons/fa'
+import { FaVoteYea, FaUserShield, FaCheckCircle, FaUsers, FaHandshake, FaChartBar, FaLock, FaUserCheck, FaCheckDouble, FaRocket } from 'react-icons/fa'
 import { BsGraphUp, BsShieldCheck, BsClock, BsPeople } from 'react-icons/bs'
 import { Loader2 } from 'lucide-react'
 import { supabaseClient } from '@/lib/auth'
@@ -188,29 +188,209 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-indigo-50 overflow-x-hidden">
+      {/* Steps Section - Premium Modern Design */}
+      <section className="py-24 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 relative overflow-hidden">
+        {/* Enhanced Background Effects */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-600/30 via-purple-600/20 to-pink-600/30"></div>
+          <div className="absolute top-20 left-20 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-pulse"></div>
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-pulse animation-delay-4000"></div>
+          <div className="absolute top-1/2 right-1/4 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse animation-delay-2000"></div>
+
+          {/* Floating Particles */}
+          <div className="absolute top-40 right-1/4 w-4 h-4 bg-white/40 rounded-full animate-bounce shadow-lg"></div>
+          <div className="absolute bottom-40 left-1/4 w-6 h-6 bg-indigo-300/50 rounded-full animate-bounce animation-delay-1000 shadow-lg"></div>
+          <div className="absolute top-1/2 left-10 w-3 h-3 bg-purple-300/60 rounded-full animate-bounce animation-delay-2000 shadow-lg"></div>
+          <div className="absolute top-1/3 right-10 w-5 h-5 bg-pink-300/40 rounded-full animate-bounce animation-delay-3000 shadow-lg"></div>
+          <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-blue-300/50 rounded-full animate-bounce animation-delay-1500 shadow-lg"></div>
+        </div>
+
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <motion.div
+            className="text-center mb-20"
+            variants={fadeInUp}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+          >
+            <motion.div
+              className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-white/20 to-white/5 backdrop-blur-xl rounded-3xl mb-8 border border-white/30 shadow-2xl"
+              whileHover={{ scale: 1.15, rotate: 15 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <FaVoteYea className="w-12 h-12 text-white drop-shadow-lg" />
+            </motion.div>
+            <h2 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white mb-6 text-shadow-lg bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-purple-100">
+              Cara Voting
+            </h2>
+            <p className="text-xl sm:text-2xl text-indigo-100 max-w-full mx-auto leading-relaxed font-light">
+              Ikuti langkah-langkah mudah berikut untuk memberikan suaramu dengan aman dan terpercaya
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {[
+              {
+                step: "1",
+                title: "Login",
+                desc: "Masuk menggunakan NIS yang telah terdaftar di sistem",
+                icon: <FaLock className="w-8 h-8" />,
+                color: "from-indigo-500 via-blue-500 to-cyan-500"
+              },
+              {
+                step: "2",
+                title: "Pilih Kandidat",
+                desc: "Pelajari profil setiap kandidat dengan seksama",
+                icon: <FaUserCheck className="w-8 h-8" />,
+                color: "from-purple-500 via-pink-500 to-rose-500"
+              },
+              {
+                step: "3",
+                title: "Konfirmasi",
+                desc: "Pastikan pilihanmu sudah sesuai sebelum submit",
+                icon: <FaCheckDouble className="w-8 h-8" />,
+                color: "from-emerald-500 via-green-500 to-teal-500"
+              },
+              {
+                step: "4",
+                title: "Selesai",
+                desc: "Suaramu telah tersimpan dengan aman di sistem",
+                icon: <FaRocket className="w-8 h-8" />,
+                color: "from-orange-500 via-red-500 to-pink-500"
+              }
+            ].map((item, index) => (
+              <motion.div
+                key={index}
+                variants={fadeInUp}
+                initial="initial"
+                whileInView="animate"
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.15 }}
+                className="group"
+              >
+                <div className="relative">
+                  {/* Enhanced Connection Line */}
+                  {index < 3 && (
+                    <div className="hidden lg:block absolute top-1/2 -right-4 w-8 h-0.5 bg-gradient-to-r from-white/40 to-transparent z-10">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-white via-blue-200 to-purple-200 rounded-full shadow-lg"
+                        initial={{ width: 0 }}
+                        whileInView={{ width: "100%" }}
+                        transition={{ delay: (index + 1) * 0.4, duration: 1.2, ease: "easeOut" }}
+                        viewport={{ once: true }}
+                      />
+                    </div>
+                  )}
+
+                  <motion.div
+                    className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/30 hover:bg-white/15 transition-all duration-700 transform hover:-translate-y-3 hover:scale-108 hover:rotate-1 relative overflow-hidden shadow-2xl hover:shadow-[0_35px_60px_-12px_rgba(255,255,255,0.3)]"
+                    whileHover={{
+                      boxShadow: "0 35px 60px -12px rgba(255, 255, 255, 0.4)"
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)'
+                    }}
+                  >
+                    {/* Premium Background Gradient */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-0 group-hover:opacity-15 transition-opacity duration-700 rounded-3xl blur-sm`}></div>
+
+                    {/* Step Number with Enhanced Design */}
+                    <motion.div
+                      className={`w-20 h-20 bg-gradient-to-r ${item.color} rounded-3xl flex items-center justify-center mb-6 mx-auto shadow-2xl ring-2 ring-white/20`}
+                      whileHover={{ rotate: 360, scale: 1.15 }}
+                      transition={{ duration: 0.8, ease: "easeInOut" }}
+                    >
+                      <span className="text-3xl font-black text-white drop-shadow-lg">{item.step}</span>
+                    </motion.div>
+
+                    {/* Modern Icon */}
+                    <motion.div
+                      className="flex items-center justify-center h-20 mb-6 text-white drop-shadow-lg"
+                      whileHover={{ scale: 1.3, rotate: 15 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                    >
+                      {item.icon}
+                    </motion.div>
+
+                    {/* Premium Content */}
+                    <div className="text-center relative z-10">
+                      <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-blue-200 transition-all duration-500 drop-shadow-lg">
+                        {item.title}
+                      </h3>
+                      <p className="text-indigo-100 leading-relaxed group-hover:text-white transition-colors duration-500 font-light text-lg">
+                        {item.desc}
+                      </p>
+                    </div>
+
+                    {/* Advanced Hover Effects */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-3xl"
+                      initial={false}
+                    />
+                    <motion.div
+                      className="absolute top-4 right-4 w-12 h-12 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                    />
+                  </motion.div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Premium Call to Action */}
+          <motion.div
+            className="text-center mt-20"
+            variants={fadeInUp}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            transition={{ delay: 1.0 }}
+          >
+            <motion.div
+              className="inline-flex items-center gap-4 bg-white/10 backdrop-blur-xl rounded-3xl px-10 py-5 border border-white/30 shadow-2xl hover:shadow-[0_20px_40px_-12px_rgba(255,255,255,0.3)]"
+              whileHover={{ scale: 1.08, backgroundColor: "rgba(255, 255, 255, 0.2)" }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <motion.div
+                className="w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full shadow-lg"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <span className="text-white font-semibold text-lg drop-shadow-lg">Sistem voting tersedia 24/7</span>
+              <motion.div
+                className="w-2 h-2 bg-white/60 rounded-full"
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Hero Section - Modern and Dynamic */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-10"></div>
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+          <div className="absolute -top-40 -right-40 w-60 h-60 sm:w-80 sm:h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+          <div className="absolute -bottom-40 -left-40 w-60 h-60 sm:w-80 sm:h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto py-20 px-4 sm:py-32 sm:px-6 lg:px-8 relative">
+        <div className="max-w-full mx-auto py-20 px-4 sm:py-32 sm:px-6 lg:px-8 relative">
           <motion.div
             className="text-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 mb-6">
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 mb-6 break-words leading-relaxed text-balance">
               Suaramu Untuk
               <br />
               Masa Depan Sekolah
             </h1>
             <motion.p
-              className="mt-4 text-xl text-gray-600 sm:text-2xl max-w-3xl mx-auto"
+              className="mt-4 text-xl text-gray-600 sm:text-2xl max-w-full mx-auto leading-relaxed"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
@@ -226,7 +406,7 @@ export default function HomePage() {
             >
               <Link
                 href="/auth/login"
-                className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium rounded-2xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-2xl hover:shadow-3xl"
               >
                 <FaVoteYea className="mr-2 text-xl" />
                 Mulai Voting
@@ -237,15 +417,12 @@ export default function HomePage() {
       </div>
 
       {/* Winner Announcement & Voting Results Section */}
-      {settings?.announcement_time && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
-          {/* Winner Announcement */}
-          <WinnerAnnouncement
-            announcementTime={settings.announcement_time}
-          />
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8 sm:space-y-12 overflow-hidden">
+        {/* Winner Announcement */}
+        <WinnerAnnouncement />
 
           {/* Voting Results - Only show when announcement is active */}
-          <section className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl sm:rounded-3xl p-4 sm:p-8">
+          <section className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl sm:rounded-4xl p-4 sm:p-8 shadow-2xl hover:shadow-3xl transition-shadow duration-300 leading-relaxed">
             <motion.div
               className="text-center mb-8 sm:mb-12"
               variants={fadeInUp}
@@ -300,7 +477,7 @@ export default function HomePage() {
                               <div className="text-center">
                                 <div className="w-16 h-16 sm:w-20 sm:h-20 relative rounded-lg sm:rounded-xl overflow-hidden shadow-md">
                                   <Image
-                                    src={result.candidate.ketua_photo_url || '/placeholder.jpg'}
+                                    src={result.candidate.ketua_photo_url || '/placeholder-image.webp'}
                                     alt={result.candidate.ketua_name}
                                     fill
                                     className="object-cover"
@@ -311,7 +488,7 @@ export default function HomePage() {
                               <div className="text-center">
                                 <div className="w-16 h-16 sm:w-20 sm:h-20 relative rounded-lg sm:rounded-xl overflow-hidden shadow-md">
                                   <Image
-                                    src={result.candidate.wakil_photo_url || '/placeholder.jpg'}
+                                    src={result.candidate.wakil_photo_url || '/placeholder-image.webp'}
                                     alt={result.candidate.wakil_name}
                                     fill
                                     className="object-cover"
@@ -399,19 +576,18 @@ export default function HomePage() {
             )}
           </section>
         </div>
-      )}
 
 
 
       {/* Candidates Section - Enhanced Design */}
-      <section className="py-20 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-hidden">
+      <section className="py-20 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-hidden overflow-x-hidden">
         {/* Background Decorations */}
         <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
           <div className="absolute bottom-20 right-10 w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse animation-delay-2000"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 relative">
           <motion.div
             className="text-center mb-20"
             variants={fadeInUp}
@@ -429,7 +605,7 @@ export default function HomePage() {
             <h2 className="text-4xl sm:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 mb-6">
               Kandidat OSIS
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-full mx-auto">
               Kenali calon pemimpin masa depan sekolah kita dengan visi, misi, dan program kerja yang inspiratif
             </p>
           </motion.div>
@@ -455,7 +631,7 @@ export default function HomePage() {
               <p className="text-xl text-gray-600">Belum ada kandidat yang terdaftar</p>
             </motion.div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10">
               {candidates.map((candidate, index) => (
                 <motion.div
                   key={candidate.id}
@@ -466,7 +642,7 @@ export default function HomePage() {
                   transition={{ delay: index * 0.2 }}
                   className="group"
                 >
-                  <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-4xl shadow-2xl overflow-hidden hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2">
                     {/* Header with Gradient */}
                     <div className={`relative px-8 py-6 ${index % 2 === 0
                       ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600'
@@ -505,10 +681,10 @@ export default function HomePage() {
                           <div className="relative">
                             <div className="w-24 h-24 sm:w-28 sm:h-28 relative rounded-xl sm:rounded-2xl overflow-hidden shadow-lg ring-4 ring-white group-hover/photo:ring-blue-200 transition-all duration-300">
                               <Image
-                                src={candidate.ketua_photo_url || '/placeholder.jpg'}
+                                src={candidate.ketua_photo_url || '/placeholder-image.webp'}
                                 alt={candidate.ketua_name}
                                 fill
-                                className="object-cover group-hover/photo:scale-110 transition-transform duration-300"
+                                className="object-cover max-w-full group-hover/photo:scale-110 transition-transform duration-300"
                               />
                             </div>
                             <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
@@ -538,10 +714,10 @@ export default function HomePage() {
                           <div className="relative">
                             <div className="w-24 h-24 sm:w-28 sm:h-28 relative rounded-xl sm:rounded-2xl overflow-hidden shadow-lg ring-4 ring-white group-hover/photo:ring-indigo-200 transition-all duration-300">
                               <Image
-                                src={candidate.wakil_photo_url || '/placeholder.jpg'}
+                                src={candidate.wakil_photo_url || '/placeholder-image.webp'}
                                 alt={candidate.wakil_name}
                                 fill
-                                className="object-cover group-hover/photo:scale-110 transition-transform duration-300"
+                                className="object-cover max-w-full group-hover/photo:scale-110 transition-transform duration-300"
                               />
                             </div>
                             <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
@@ -585,30 +761,38 @@ export default function HomePage() {
                             transition={{ duration: 0.3 }}
                             className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-6"
                           >
-                            <div className={`text-gray-700 leading-relaxed ${expandedCandidate === candidate.id ? '' : 'line-clamp-4'
-                              }`}>
-                              {activeTab === 'visi' && candidate.visi}
-                              {activeTab === 'misi' && candidate.misi}
-                              {activeTab === 'program kerja' && candidate.program_kerja}
-                            </div>
+                            {(() => {
+                              const currentText = activeTab === 'visi' ? candidate.visi : activeTab === 'misi' ? candidate.misi : candidate.program_kerja
+                              const shouldShowButton = currentText.length > 100
 
-                            <motion.button
-                              onClick={() => setExpandedCandidate(
-                                expandedCandidate === candidate.id ? null : candidate.id
-                              )}
-                              className="mt-4 inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-                              whileHover={{ x: 5 }}
-                              transition={{ type: "spring", stiffness: 300 }}
-                            >
-                              {expandedCandidate === candidate.id ? 'Lihat lebih sedikit' : 'Lihat selengkapnya'}
-                              <motion.span
-                                className="ml-1"
-                                animate={{ rotate: expandedCandidate === candidate.id ? 180 : 0 }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                ↓
-                              </motion.span>
-                            </motion.button>
+                              return (
+                                <>
+                                  <div className={`text-gray-700 leading-relaxed ${shouldShowButton && expandedCandidate !== candidate.id ? 'line-clamp-4' : ''}`}>
+                                    {currentText}
+                                  </div>
+
+                                  {shouldShowButton && (
+                                    <motion.button
+                                      onClick={() => setExpandedCandidate(
+                                        expandedCandidate === candidate.id ? null : candidate.id
+                                      )}
+                                      className="mt-4 inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                                      whileHover={{ x: 5 }}
+                                      transition={{ type: "spring", stiffness: 300 }}
+                                    >
+                                      {expandedCandidate === candidate.id ? 'Lihat lebih sedikit' : 'Lihat selengkapnya'}
+                                      <motion.span
+                                        className="ml-1"
+                                        animate={{ rotate: expandedCandidate === candidate.id ? 180 : 0 }}
+                                        transition={{ duration: 0.3 }}
+                                      >
+                                        ↓
+                                      </motion.span>
+                                    </motion.button>
+                                  )}
+                                </>
+                              )
+                            })()}
                           </motion.div>
                         </AnimatePresence>
                       </div>
@@ -621,186 +805,27 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Steps Section - Enhanced Design */}
-      <section className="py-20 bg-gradient-to-br from-indigo-900 via-blue-900 to-purple-900 relative overflow-hidden">
-        {/* Background Effects */}
-        <div className="absolute inset-0">
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/20 to-purple-600/20"></div>
-          <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse animation-delay-4000"></div>
-
-          {/* Floating Elements */}
-          <div className="absolute top-40 right-1/4 w-4 h-4 bg-white/30 rounded-full animate-bounce"></div>
-          <div className="absolute bottom-40 left-1/4 w-6 h-6 bg-blue-300/40 rounded-full animate-bounce animation-delay-1000"></div>
-          <div className="absolute top-1/2 left-10 w-3 h-3 bg-purple-300/50 rounded-full animate-bounce animation-delay-2000"></div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <motion.div
-            className="text-center mb-20"
-            variants={fadeInUp}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-          >
-            <motion.div
-              className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-sm rounded-3xl mb-8 border border-white/20"
-              whileHover={{ scale: 1.1, rotate: 10 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <FaVoteYea className="w-10 h-10 text-white" />
-            </motion.div>
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-6">
-              Cara Voting
-            </h2>
-            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
-              Ikuti langkah-langkah mudah berikut untuk memberikan suaramu dengan aman dan terpercaya
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                step: "1",
-                title: "Login",
-                desc: "Masuk menggunakan NIS yang telah terdaftar di sistem",
-                icon: "🔐",
-                color: "from-blue-500 to-cyan-500"
-              },
-              {
-                step: "2",
-                title: "Pilih Kandidat",
-                desc: "Pelajari profil setiap kandidat dengan seksama",
-                icon: "👥",
-                color: "from-purple-500 to-pink-500"
-              },
-              {
-                step: "3",
-                title: "Konfirmasi",
-                desc: "Pastikan pilihanmu sudah sesuai sebelum submit",
-                icon: "✅",
-                color: "from-green-500 to-emerald-500"
-              },
-              {
-                step: "4",
-                title: "Selesai",
-                desc: "Suaramu telah tersimpan dengan aman di sistem",
-                icon: "🎉",
-                color: "from-orange-500 to-red-500"
-              }
-            ].map((item, index) => (
-              <motion.div
-                key={index}
-                variants={fadeInUp}
-                initial="initial"
-                whileInView="animate"
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.2 }}
-                className="group"
-              >
-                <div className="relative">
-                  {/* Connection Line */}
-                  {index < 3 && (
-                    <div className="hidden lg:block absolute top-1/2 -right-4 w-8 h-0.5 bg-gradient-to-r from-white/30 to-transparent z-10">
-                      <motion.div
-                        className="h-full bg-gradient-to-r from-white to-blue-200"
-                        initial={{ width: 0 }}
-                        whileInView={{ width: "100%" }}
-                        transition={{ delay: (index + 1) * 0.5, duration: 0.8 }}
-                        viewport={{ once: true }}
-                      />
-                    </div>
-                  )}
-
-                  <motion.div
-                    className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 hover:bg-white/20 transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 relative overflow-hidden"
-                    whileHover={{
-                      boxShadow: "0 25px 50px -12px rgba(255, 255, 255, 0.25)"
-                    }}
-                  >
-                    {/* Background Gradient */}
-                    <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-3xl`}></div>
-
-                    {/* Step Number */}
-                    <motion.div
-                      className={`w-16 h-16 bg-gradient-to-r ${item.color} rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg`}
-                      whileHover={{ rotate: 360, scale: 1.1 }}
-                      transition={{ duration: 0.6 }}
-                    >
-                      <span className="text-2xl font-bold text-white">{item.step}</span>
-                    </motion.div>
-
-                    {/* Icon */}
-                    <motion.div
-                      className="text-4xl mb-4 text-center"
-                      whileHover={{ scale: 1.2, rotate: 10 }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                    >
-                      {item.icon}
-                    </motion.div>
-
-                    {/* Content */}
-                    <div className="text-center relative z-10">
-                      <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-blue-100 transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-blue-100 leading-relaxed group-hover:text-white transition-colors">
-                        {item.desc}
-                      </p>
-                    </div>
-
-                    {/* Hover Effect */}
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl"
-                      initial={false}
-                    />
-                  </motion.div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Call to Action */}
-          <motion.div
-            className="text-center mt-16"
-            variants={fadeInUp}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-            transition={{ delay: 0.8 }}
-          >
-            <motion.div
-              className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-2xl px-8 py-4 border border-white/20"
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.2)" }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-white font-medium">Sistem voting tersedia 24/7</span>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl overflow-hidden shadow-xl"
+            className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-600 rounded-3xl overflow-hidden shadow-2xl hover:shadow-3xl transition-shadow duration-300"
             variants={fadeInUp}
             initial="initial"
             whileInView="animate"
             viewport={{ once: true }}
           >
-            <div className="px-6 py-12 md:p-12 text-center">
-              <h2 className="text-3xl font-bold text-white mb-6">
+            <div className="px-6 py-12 sm:px-8 sm:py-16 md:px-12 md:py-20 text-center">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 leading-relaxed">
                 Siap Memberikan Suaramu?
               </h2>
-              <p className="text-blue-100 mb-8 text-lg">
+              <p className="text-blue-100 mb-8 text-lg sm:text-xl leading-relaxed">
                 Setiap suara menentukan masa depan sekolah kita
               </p>
               <Link
                 href="/auth/login"
-                className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium rounded-xl text-blue-600 bg-white hover:bg-blue-50 transform hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium rounded-2xl text-blue-600 bg-white hover:bg-blue-50 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 <FaVoteYea className="mr-2" />
                 Mulai Voting Sekarang
@@ -811,13 +836,13 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-white/50 backdrop-blur-sm py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <footer className="bg-white/50 backdrop-blur-sm py-8 sm:py-12 md:py-16 shadow-lg overflow-x-hidden">
+        <div className="max-w-full mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 text-center">
           <Link
             href="https://instagram.com/biimaa_jo"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            className="inline-flex items-center text-sm sm:text-base text-gray-500 hover:text-gray-700 transition-colors leading-relaxed"
           >
             <motion.span
               initial={{ opacity: 0 }}
