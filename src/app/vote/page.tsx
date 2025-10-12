@@ -37,7 +37,7 @@ export default function VotePage() {
   const [error, setError] = useState('')
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [stats, setStats] = useState({ totalVoters: 0, votedCount: 0 })
-  const [activeTab, setActiveTab] = useState<'visi' | 'misi' | 'program'>('visi')
+  const [activeTab, setActiveTab] = useState<'visi' | 'misi'>('visi')
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(true)
 
   useEffect(() => {
@@ -322,7 +322,7 @@ export default function VotePage() {
                     : 'border-gray-100'
                 }`}>
                   <div className="flex space-x-4 -mb-px">
-                    {(['visi', 'misi', 'program'] as const).map((tab) => (
+                    {(['visi', 'misi'] as const).map((tab) => (
                       <button
                         key={tab}
                         onClick={(e) => {
@@ -359,7 +359,6 @@ export default function VotePage() {
                     >
                       {activeTab === 'visi' && candidate.visi}
                       {activeTab === 'misi' && candidate.misi}
-                      {activeTab === 'program' && candidate.program_kerja}
                     </motion.div>
                   </AnimatePresence>
                 </div>

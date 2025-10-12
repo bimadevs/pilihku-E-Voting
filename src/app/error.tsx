@@ -34,12 +34,12 @@ export default function Error({
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Terjadi Kesalahan
+            Website sedang mengalami gangguan...
           </h1>
         </div>
 
         <p className="text-gray-600 mb-8">
-          Maaf, telah terjadi kesalahan. Silakan coba lagi dalam beberapa saat.
+          Maaf, website saat ini sedang mengalami gangguan. Silakan coba lagi dalam beberapa saat atau hubungi admin.
         </p>
 
         <div className="space-x-4">

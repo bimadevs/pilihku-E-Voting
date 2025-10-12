@@ -57,7 +57,7 @@ export default function HomePage() {
   const [votingStats, setVotingStats] = useState<VotingStats | null>(null)
   const [isLoadingStats, setIsLoadingStats] = useState(true)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState<'visi' | 'misi' | 'program kerja'>('visi')
+  const [activeTab, setActiveTab] = useState<'visi' | 'misi'>('visi')
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null)
   const [settings, setSettings] = useState<{
     announcement_time: string | null,
@@ -735,7 +735,7 @@ export default function HomePage() {
                       {/* Enhanced Tabs */}
                       <div className="mb-6">
                         <div className="flex bg-gray-100 rounded-2xl p-1">
-                          {(['visi', 'misi', 'program kerja'] as const).map((tab) => (
+                          {(['visi', 'misi'] as const).map((tab) => (
                             <button
                               key={tab}
                               onClick={() => setActiveTab(tab)}
@@ -762,7 +762,7 @@ export default function HomePage() {
                             className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-6"
                           >
                             {(() => {
-                              const currentText = activeTab === 'visi' ? candidate.visi : activeTab === 'misi' ? candidate.misi : candidate.program_kerja
+                              const currentText = activeTab === 'visi' ? candidate.visi : candidate.misi
                               const shouldShowButton = currentText.length > 100
 
                               return (

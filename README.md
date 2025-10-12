@@ -28,7 +28,7 @@ PilihKu adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OS
 
 ### Untuk Pemilih
 - Login dengan NIS
-- Melihat profil lengkap kandidat (foto, visi, misi, program kerja)
+- Melihat profil lengkap kandidat (foto, visi, misi)
 - Melakukan voting dengan konfirmasi
 - Halaman terima kasih setelah voting
 - Tidak bisa voting lebih dari sekali
@@ -254,7 +254,7 @@ Konfigurasi bucket ini untuk:
    - Buka menu "Kandidat"
    - Tambah/edit/hapus data kandidat
    - Upload foto kandidat
-   - Isi visi, misi, dan program kerja
+   - Isi visi dan misi
 
 3. **Mengelola Pemilih**
    - Buka menu "Pemilih"

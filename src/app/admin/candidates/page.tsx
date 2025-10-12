@@ -17,7 +17,6 @@ interface Candidate {
   wakil_class: string
   visi: string
   misi: string
-  program_kerja: string
   ketua_photo_url?: string
   wakil_photo_url?: string
 }
@@ -65,7 +64,6 @@ export default function CandidatesPage() {
     wakil_class: '',
     visi: '',
     misi: '',
-    program_kerja: '',
     ketua_photo: null as File | null,
     wakil_photo: null as File | null
   })
@@ -102,9 +100,9 @@ export default function CandidatesPage() {
     setLoading(true)
 
     try {
-      if (!formData.candidate_number || !formData.ketua_name || !formData.wakil_name || 
+      if (!formData.candidate_number || !formData.ketua_name || !formData.wakil_name ||
           !formData.ketua_class || !formData.wakil_class ||
-          !formData.visi || !formData.misi || !formData.program_kerja) {
+          !formData.visi || !formData.misi) {
         throw new Error('Semua field harus diisi')
       }
 
@@ -178,7 +176,6 @@ export default function CandidatesPage() {
           wakil_class: formData.wakil_class,
           visi: formData.visi,
           misi: formData.misi,
-          program_kerja: formData.program_kerja,
           ketua_photo_url: ketuaPhotoUrl,
           wakil_photo_url: wakilPhotoUrl
         }])
@@ -195,7 +192,6 @@ export default function CandidatesPage() {
         wakil_class: '',
         visi: '',
         misi: '',
-        program_kerja: '',
         ketua_photo: null,
         wakil_photo: null
       })
@@ -455,7 +451,7 @@ export default function CandidatesPage() {
               </div>
             </div>
 
-            {/* Visi, Misi, Program Kerja */}
+            {/* Visi, Misi */}
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -483,22 +479,6 @@ export default function CandidatesPage() {
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
                     misi: e.target.value
-                  }))}
-                  rows={3}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Program Kerja
-                </label>
-                <textarea
-                  name="program_kerja"
-                  value={formData.program_kerja}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    program_kerja: e.target.value
                   }))}
                   rows={3}
                   className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
@@ -691,7 +671,7 @@ export default function CandidatesPage() {
                     </div>
                   </div>
 
-                  {/* Visi, Misi, Program Kerja */}
+                  {/* Visi, Misi */}
                   <div className="space-y-6">
                     <div className="bg-blue-50 p-6 rounded-xl">
                       <h3 className="font-bold text-xl text-blue-900 mb-3">Visi</h3>
@@ -704,13 +684,6 @@ export default function CandidatesPage() {
                       <h3 className="font-bold text-xl text-green-900 mb-3">Misi</h3>
                       <p className="text-gray-700 whitespace-pre-line text-base leading-relaxed">
                         {selectedCandidate.misi}
-                      </p>
-                    </div>
-
-                    <div className="bg-purple-50 p-6 rounded-xl">
-                      <h3 className="font-bold text-xl text-purple-900 mb-3">Program Kerja</h3>
-                      <p className="text-gray-700 whitespace-pre-line text-base leading-relaxed">
-                        {selectedCandidate.program_kerja}
                       </p>
                     </div>
                   </div>
