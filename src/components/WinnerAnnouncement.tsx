@@ -18,7 +18,6 @@ export default function WinnerAnnouncement({}: WinnerAnnouncementProps) {
   const [announcementTime, setAnnouncementTime] = useState<string | null>(null)
 
   useEffect(() => {
-    console.log('WinnerAnnouncement: useEffect triggered')
     const fetchSettings = async () => {
       try {
         const { data: settings, error } = await supabaseClient
@@ -30,7 +29,6 @@ export default function WinnerAnnouncement({}: WinnerAnnouncementProps) {
         if (error) throw error
 
         const fetchedAnnouncementTime = settings?.[0]?.announcement_time
-        console.log('WinnerAnnouncement fetchSettings result:', settings, 'fetchedAnnouncementTime:', fetchedAnnouncementTime)
         setAnnouncementTime(fetchedAnnouncementTime)
 
         if (!fetchedAnnouncementTime) {
@@ -38,7 +36,6 @@ export default function WinnerAnnouncement({}: WinnerAnnouncementProps) {
           return
         }
 
-        console.log('WinnerAnnouncement: Starting countdown for:', fetchedAnnouncementTime)
         checkAnnouncementStatus()
         const timer = setInterval(() => {
           const now = new Date().getTime()
@@ -75,7 +72,6 @@ export default function WinnerAnnouncement({}: WinnerAnnouncementProps) {
     const subscription = supabaseClient
       .channel('settings_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, (payload) => {
-        console.log('WinnerAnnouncement: Settings changed:', payload)
         fetchSettings()
       })
       .subscribe()
@@ -162,9 +158,7 @@ export default function WinnerAnnouncement({}: WinnerAnnouncementProps) {
   }
 
   // Jika pengumuman tidak aktif, jangan tampilkan apa-apa
-  console.log('WinnerAnnouncement render - isAnnouncementActive:', isAnnouncementActive, 'showWinner:', showWinner, 'timeLeft:', timeLeft)
   if (!isAnnouncementActive) {
-    console.log('WinnerAnnouncement: Not rendering because announcement not active')
     return null
   }
 
