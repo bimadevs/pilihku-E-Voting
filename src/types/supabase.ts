@@ -7,9 +7,13 @@ export interface Database {
           candidate_number: number
           ketua_name: string
           wakil_name: string
+          ketua_class: string
+          wakil_class: string
           visi: string
           misi: string
-          photo_url?: string
+          program_kerja: string
+          ketua_photo_url?: string
+          wakil_photo_url?: string
           created_at: string
         }
       }
@@ -40,6 +44,15 @@ export interface Database {
           created_at: string
         }
       }
+      settings: {
+        Row: {
+          id: string
+          announcement_time: string | null
+          winner_id: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+      }
     }
   }
-} 
+}

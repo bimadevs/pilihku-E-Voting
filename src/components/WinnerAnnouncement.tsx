@@ -71,7 +71,7 @@ export default function WinnerAnnouncement({}: WinnerAnnouncementProps) {
     // Subscribe to settings changes
     const subscription = supabaseClient
       .channel('settings_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, (payload: any) => {
         fetchSettings()
       })
       .subscribe()
@@ -206,4 +206,4 @@ export default function WinnerAnnouncement({}: WinnerAnnouncementProps) {
       </AnimatePresence>
     </div>
   )
-} 
+}
