@@ -606,7 +606,7 @@ export default function HomePage() {
               Kandidat OSIS
             </h2>
             <p className="text-xl text-gray-600 max-w-full mx-auto">
-              Kenali calon pemimpin masa depan sekolah kita dengan visi, misi, dan program kerja yang inspiratif
+              Kenali calon pemimpin masa depan sekolah kita dengan visi dan misi yang inspiratif
             </p>
           </motion.div>
 
