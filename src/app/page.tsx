@@ -768,7 +768,9 @@ export default function HomePage() {
                               return (
                                 <>
                                   <div className={`text-gray-700 leading-relaxed ${shouldShowButton && expandedCandidate !== candidate.id ? 'line-clamp-4' : ''}`}>
-                                    {currentText}
+                                    {currentText.split('\n').map((line, index) => (
+                                      <p key={index}>{line}</p>
+                                    ))}
                                   </div>
 
                                   {shouldShowButton && (

@@ -5,7 +5,7 @@ import { supabaseClient } from '@/lib/auth'
 import { toast, Toaster } from 'react-hot-toast'
 import Image from 'next/image'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
-import { CheckCircle, AlertCircle, XCircle } from 'lucide-react'
+import { CheckCircle, AlertCircle, XCircle, Edit2 } from 'lucide-react'
 import { ConfirmationDialog } from '../voters/components/ConfirmationDialog'
 
 interface Candidate {
@@ -69,6 +69,18 @@ export default function CandidatesPage() {
   })
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editFormData, setEditFormData] = useState({
+    candidate_number: '',
+    ketua_name: '',
+    wakil_name: '',
+    ketua_class: '',
+    wakil_class: '',
+    visi: '',
+    misi: '',
+    ketua_photo: null as File | null,
+    wakil_photo: null as File | null
+  })
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     type: 'single' as 'single' | 'multiple' | 'all',
@@ -218,7 +230,7 @@ export default function CandidatesPage() {
 
   async function handleConfirmDelete() {
     if (!confirmDialog.id) return
-    
+
     try {
       // 1. Dapatkan data kandidat untuk mendapatkan path foto
       const { data: candidate, error: fetchError } = await supabaseClient
@@ -240,7 +252,7 @@ export default function CandidatesPage() {
           .storage
           .from('candidate-photos')
           .remove([ketuaPhotoPath])
-        
+
         if (ketuaDeleteError) {
           console.error('Error deleting ketua photo:', ketuaDeleteError)
           throw new Error('Gagal menghapus foto ketua')
@@ -256,7 +268,7 @@ export default function CandidatesPage() {
           .storage
           .from('candidate-photos')
           .remove([wakilPhotoPath])
-        
+
         if (wakilDeleteError) {
           console.error('Error deleting wakil photo:', wakilDeleteError)
           throw new Error('Gagal menghapus foto wakil')
@@ -288,9 +300,151 @@ export default function CandidatesPage() {
     } catch (error) {
       console.error('Error:', error)
       showNotification(
-        error instanceof Error ? error.message : 'Gagal menghapus kandidat', 
+        error instanceof Error ? error.message : 'Gagal menghapus kandidat',
         'error'
       )
+    }
+  }
+
+  function handleEdit(candidate: Candidate) {
+    setEditFormData({
+      candidate_number: candidate.candidate_number.toString(),
+      ketua_name: candidate.ketua_name,
+      wakil_name: candidate.wakil_name,
+      ketua_class: candidate.ketua_class,
+      wakil_class: candidate.wakil_class,
+      visi: candidate.visi,
+      misi: candidate.misi,
+      ketua_photo: null,
+      wakil_photo: null
+    })
+    setSelectedCandidate(candidate)
+    setIsEditModalOpen(true)
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedCandidate) return
+
+    setLoading(true)
+
+    try {
+      if (!editFormData.candidate_number || !editFormData.ketua_name || !editFormData.wakil_name ||
+          !editFormData.ketua_class || !editFormData.wakil_class ||
+          !editFormData.visi || !editFormData.misi) {
+        throw new Error('Semua field harus diisi')
+      }
+
+      let ketuaPhotoUrl = selectedCandidate.ketua_photo_url
+      let wakilPhotoUrl = selectedCandidate.wakil_photo_url
+
+      // Upload foto ketua baru jika ada
+      if (editFormData.ketua_photo) {
+        try {
+          // Hapus foto lama jika ada
+          if (selectedCandidate.ketua_photo_url) {
+            const ketuaPhotoPath = selectedCandidate.ketua_photo_url
+              .split('candidate-photos/')[1]
+            await supabaseClient
+              .storage
+              .from('candidate-photos')
+              .remove([ketuaPhotoPath])
+          }
+
+          const fileExt = editFormData.ketua_photo.name.split('.').pop()
+          const fileName = `ketua_${Date.now()}.${fileExt}`
+
+          const { error: uploadError } = await supabaseClient
+            .storage
+            .from('candidate-photos')
+            .upload(`public/${fileName}`, editFormData.ketua_photo, {
+              cacheControl: '3600',
+              upsert: true
+            })
+
+          if (uploadError) throw uploadError
+
+          const { data } = supabaseClient
+            .storage
+            .from('candidate-photos')
+            .getPublicUrl(`public/${fileName}`)
+
+          ketuaPhotoUrl = data.publicUrl
+        } catch (error) {
+          showNotification('Gagal mengupload foto ketua', 'error')
+          throw new Error('Gagal mengupload foto ketua')
+        }
+      }
+
+      // Upload foto wakil baru jika ada
+      if (editFormData.wakil_photo) {
+        try {
+          // Hapus foto lama jika ada
+          if (selectedCandidate.wakil_photo_url) {
+            const wakilPhotoPath = selectedCandidate.wakil_photo_url
+              .split('candidate-photos/')[1]
+            await supabaseClient
+              .storage
+              .from('candidate-photos')
+              .remove([wakilPhotoPath])
+          }
+
+          const fileExt = editFormData.wakil_photo.name.split('.').pop()
+          const fileName = `wakil_${Date.now()}.${fileExt}`
+
+          const { error: uploadError } = await supabaseClient
+            .storage
+            .from('candidate-photos')
+            .upload(`public/${fileName}`, editFormData.wakil_photo, {
+              cacheControl: '3600',
+              upsert: true
+            })
+
+          if (uploadError) throw uploadError
+
+          const { data } = supabaseClient
+            .storage
+            .from('candidate-photos')
+            .getPublicUrl(`public/${fileName}`)
+
+          wakilPhotoUrl = data.publicUrl
+        } catch (error) {
+          showNotification('Gagal mengupload foto wakil', 'error')
+          throw new Error('Gagal mengupload foto wakil')
+        }
+      }
+
+      // Update data kandidat
+      const { error: updateError } = await supabaseClient
+        .from('candidates')
+        .update({
+          candidate_number: parseInt(editFormData.candidate_number),
+          ketua_name: editFormData.ketua_name,
+          wakil_name: editFormData.wakil_name,
+          ketua_class: editFormData.ketua_class,
+          wakil_class: editFormData.wakil_class,
+          visi: editFormData.visi,
+          misi: editFormData.misi,
+          ketua_photo_url: ketuaPhotoUrl,
+          wakil_photo_url: wakilPhotoUrl
+        })
+        .eq('id', selectedCandidate.id)
+
+      if (updateError) throw updateError
+
+      showNotification('Kandidat berhasil diperbarui', 'success')
+      fetchCandidates()
+      setIsEditModalOpen(false)
+      setSelectedCandidate(null)
+    } catch (error) {
+      console.error('Error:', error)
+      if (error instanceof Error) {
+        showNotification(error.message, 'error')
+      } else {
+        showNotification('Gagal memperbarui kandidat', 'error')
+      }
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -589,14 +743,22 @@ export default function CandidatesPage() {
                             setSelectedCandidate(candidate)
                             setIsDetailModalOpen(true)
                           }}
-                          className="text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg bg-blue-50 text-blue-700 
+                          className="text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg bg-blue-50 text-blue-700
                                    hover:bg-blue-100 transition-colors duration-200"
                         >
                           Detail
                         </button>
                         <button
+                          onClick={() => handleEdit(candidate)}
+                          className="text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg bg-green-50 text-green-700
+                                   hover:bg-green-100 transition-colors duration-200"
+                        >
+                          <Edit2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                          Edit
+                        </button>
+                        <button
                           onClick={() => handleDelete(candidate.id)}
-                          className="text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg bg-red-50 text-red-700 
+                          className="text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg bg-red-50 text-red-700
                                    hover:bg-red-100 transition-colors duration-200"
                         >
                           Hapus
@@ -620,7 +782,7 @@ export default function CandidatesPage() {
                     Detail Paslon Nomor {selectedCandidate.candidate_number}
                   </DialogTitle>
                 </DialogHeader>
-                
+
                 <div className="py-6 space-y-8">
                   {/* Info Paslon */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -675,21 +837,239 @@ export default function CandidatesPage() {
                   <div className="space-y-6">
                     <div className="bg-blue-50 p-6 rounded-xl">
                       <h3 className="font-bold text-xl text-blue-900 mb-3">Visi</h3>
-                      <p className="text-gray-700 whitespace-pre-line text-base leading-relaxed">
-                        {selectedCandidate.visi}
-                      </p>
+                      <div className="text-gray-700 text-base leading-relaxed">
+                        {selectedCandidate.visi.split('\n').map((line, index) => (
+                          <p key={index}>{line}</p>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="bg-green-50 p-6 rounded-xl">
                       <h3 className="font-bold text-xl text-green-900 mb-3">Misi</h3>
-                      <p className="text-gray-700 whitespace-pre-line text-base leading-relaxed">
-                        {selectedCandidate.misi}
-                      </p>
+                      <div className="text-gray-700 text-base leading-relaxed">
+                        {selectedCandidate.misi.split('\n').map((line, index) => (
+                          <p key={index}>{line}</p>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal Edit Kandidat */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="max-w-4xl bg-white mx-4 sm:mx-auto max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="sticky top-0 bg-white z-10 pb-4 border-b">
+              <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900">
+                Edit Kandidat
+              </DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleEditSubmit} className="py-6 space-y-6">
+              {/* Grid untuk input fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Nomor Urut */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nomor Urut
+                  </label>
+                  <input
+                    type="number"
+                    name="candidate_number"
+                    value={editFormData.candidate_number}
+                    onChange={(e) => setEditFormData(prev => ({
+                      ...prev,
+                      candidate_number: e.target.value
+                    }))}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    min="1"
+                  />
+                </div>
+
+                {/* Spacer untuk alignment */}
+                <div className="hidden md:block"></div>
+
+                {/* Ketua Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-800">Data Calon Ketua</h3>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nama Lengkap
+                    </label>
+                    <input
+                      type="text"
+                      name="ketua_name"
+                      value={editFormData.ketua_name}
+                      onChange={(e) => setEditFormData(prev => ({
+                        ...prev,
+                        ketua_name: e.target.value
+                      }))}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Kelas
+                    </label>
+                    <input
+                      type="text"
+                      name="ketua_class"
+                      value={editFormData.ketua_class}
+                      onChange={(e) => setEditFormData(prev => ({
+                        ...prev,
+                        ketua_class: e.target.value
+                      }))}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Foto Baru (Opsional)
+                    </label>
+                    <input
+                      type="file"
+                      name="ketua_photo"
+                      onChange={(e) => setEditFormData(prev => ({
+                        ...prev,
+                        ketua_photo: e.target.files ? e.target.files[0] : null
+                      }))}
+                      accept="image/*"
+                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
+                               file:rounded-xl file:border-0 file:text-sm file:font-semibold
+                               file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                      autoComplete="off"
+                    />
+                    {selectedCandidate?.ketua_photo_url && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Foto saat ini akan diganti jika mengupload foto baru
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Wakil Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-800">Data Calon Wakil</h3>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nama Lengkap
+                    </label>
+                    <input
+                      type="text"
+                      name="wakil_name"
+                      value={editFormData.wakil_name}
+                      onChange={(e) => setEditFormData(prev => ({
+                        ...prev,
+                        wakil_name: e.target.value
+                      }))}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Kelas
+                    </label>
+                    <input
+                      type="text"
+                      name="wakil_class"
+                      value={editFormData.wakil_class}
+                      onChange={(e) => setEditFormData(prev => ({
+                        ...prev,
+                        wakil_class: e.target.value
+                      }))}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Foto Baru (Opsional)
+                    </label>
+                    <input
+                      type="file"
+                      name="wakil_photo"
+                      onChange={(e) => setEditFormData(prev => ({
+                        ...prev,
+                        wakil_photo: e.target.files ? e.target.files[0] : null
+                      }))}
+                      accept="image/*"
+                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
+                               file:rounded-xl file:border-0 file:text-sm file:font-semibold
+                               file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                      autoComplete="off"
+                    />
+                    {selectedCandidate?.wakil_photo_url && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Foto saat ini akan diganti jika mengupload foto baru
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Visi, Misi */}
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Visi
+                  </label>
+                  <textarea
+                    name="visi"
+                    value={editFormData.visi}
+                    onChange={(e) => setEditFormData(prev => ({
+                      ...prev,
+                      visi: e.target.value
+                    }))}
+                    rows={3}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500"
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Misi
+                  </label>
+                  <textarea
+                    name="misi"
+                    value={editFormData.misi}
+                    onChange={(e) => setEditFormData(prev => ({
+                      ...prev,
+                      misi: e.target.value
+                    }))}
+                    rows={3}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-6 py-2 bg-gray-500 text-white rounded-xl hover:bg-gray-600
+                           transition-colors duration-200 w-full sm:w-auto"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600
+                           transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+                           w-full sm:w-auto"
+                >
+                  {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
           </DialogContent>
         </Dialog>
 

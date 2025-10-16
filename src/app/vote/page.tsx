@@ -357,8 +357,12 @@ export default function VotePage() {
                           : 'text-gray-600'
                       }`}
                     >
-                      {activeTab === 'visi' && candidate.visi}
-                      {activeTab === 'misi' && candidate.misi}
+                      {activeTab === 'visi' && candidate.visi.split('\n').map((line, index) => (
+                        <p key={index}>{line}</p>
+                      ))}
+                      {activeTab === 'misi' && candidate.misi.split('\n').map((line, index) => (
+                        <p key={index}>{line}</p>
+                      ))}
                     </motion.div>
                   </AnimatePresence>
                 </div>
