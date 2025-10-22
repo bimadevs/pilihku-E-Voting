@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   description: "Pilihku adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OSIS di sekolah. Dibangun dengan Next.js 14, Supabase, dan Tailwind CSS.",
   keywords: 'e-voting, OSIS, pemilihan ketua OSIS, voting online sekolah, sistem pemilihan digital',
   openGraph: {
+    url: 'https://vote.bimadev.online',
+    siteName: 'PilihKu',
     title: 'PilihKu - Sistem E-Voting OSIS Modern',
     description: 'Sistem e-voting modern untuk pemilihan ketua dan wakil ketua OSIS. Mudah, aman, dan transparan.',
     images: ['/og-image.png'],
@@ -41,7 +43,7 @@ export const metadata: Metadata = {
     google: 'your-google-verification-code',
   },
   alternates: {
-    canonical: 'https://pilihku.bimadev.xyz',
+    canonical: 'https://vote.bimadev.online',
   }
 };
 
