@@ -60,7 +60,7 @@ export async function middleware(req: NextRequest) {
       // Jika tidak ada jadwal atau di luar jadwal, redirect ke homepage dengan pesan
       if (!schedule || now < new Date(schedule.start_time) || now > new Date(schedule.end_time)) {
         const message = !schedule 
-          ? 'Jadwal voting belum ditentukan'
+          ? 'Admin belum mengatur jadwal voting'
           : now < new Date(schedule.start_time)
           ? 'Voting belum dimulai'
           : 'Voting telah berakhir'
