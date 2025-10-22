@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabaseClient } from '@/lib/auth'
+import { useRealtimeVotes, useRealtimeClassStats } from '@/hooks/useRealtimeVotes'
 import { Bar, Doughnut, Line } from 'react-chartjs-2'
 import { toast, Toaster } from 'react-hot-toast'
 import {
@@ -95,11 +96,7 @@ const showNotification = (message: string, type: 'success' | 'error' | 'info' = 
 }
 
 export default function ResultsPage() {
-  const [stats, setStats] = useState<VotingStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('overview')
-  const [classStats, setClassStats] = useState<ClassStats[]>([])
   const [classFilter, setClassFilter] = useState('')
   const [sortConfig, setSortConfig] = useState<{
     key: keyof ClassStats
@@ -109,127 +106,30 @@ export default function ResultsPage() {
     direction: 'asc'
   })
 
-  useEffect(() => {
-    fetchVotingResults()
-    fetchClassStats()
-    const interval = setInterval(fetchVotingResults, 30000) // Refresh every 30 seconds
-    return () => {
-      clearInterval(interval)
-    }
-  }, [])
+  // Use real-time hooks
+  const { votingStats: rawVotingStats, isLoading: votingLoading, error: votingError } = useRealtimeVotes()
+  const { classStats: rawClassStats, isLoading: classLoading, error: classError } = useRealtimeClassStats()
 
-  async function fetchVotingResults() {
-    try {
-      // Fetch total voters and their status
-      const { data: voters, error: votersError } = await supabaseClient
-        .from('voters')
-        .select('has_voted')
+  // Transform voting stats to match admin page format
+  const stats: VotingStats | null = rawVotingStats ? {
+    totalVoters: rawVotingStats.totalVoters,
+    votedCount: rawVotingStats.totalVotes, // Using totalVotes as votedCount for admin display
+    notVotedCount: rawVotingStats.totalVoters - rawVotingStats.totalVotes,
+    votingPercentage: rawVotingStats.participationRate,
+    candidateResults: rawVotingStats.candidateResults.map(result => ({
+      candidateNumber: result.candidate.candidate_number,
+      ketuaName: result.candidate.ketua_name,
+      wakilName: result.candidate.wakil_name,
+      voteCount: result.voteCount,
+      percentage: result.percentage
+    })),
+    votingHistory: [] // We'll keep this empty for now since we don't have hourly data in the hook
+  } : null
 
-      if (votersError) throw votersError
+  const classStats = rawClassStats
 
-      // Fetch all candidates
-      const { data: candidates, error: candidatesError } = await supabaseClient
-        .from('candidates')
-        .select('*')
-        .order('candidate_number')
-
-      if (candidatesError) throw candidatesError
-
-      // Fetch votes with candidate details
-      const { data: votes, error: votesError } = await supabaseClient
-        .from('votes')
-        .select('candidate_id')
-
-      if (votesError) throw votesError
-
-      // Calculate statistics
-      const totalVoters = voters.length
-      const votedCount = voters.filter(v => v.has_voted).length
-      const notVotedCount = totalVoters - votedCount
-      const votingPercentage = (votedCount / totalVoters) * 100
-
-      // Count votes for each candidate
-      const voteCounts = new Map()
-      votes.forEach(vote => {
-        voteCounts.set(vote.candidate_id, (voteCounts.get(vote.candidate_id) || 0) + 1)
-      })
-
-      // Prepare candidate results
-      const candidateResults = candidates.map(candidate => ({
-        candidateNumber: candidate.candidate_number,
-        ketuaName: candidate.ketua_name,
-        wakilName: candidate.wakil_name,
-        voteCount: voteCounts.get(candidate.id) || 0,
-        percentage: votedCount > 0 ? ((voteCounts.get(candidate.id) || 0) / votedCount) * 100 : 0
-      }))
-
-      // Add voting history data
-      const { data: votesHistory } = await supabaseClient
-        .from('votes')
-        .select('created_at')
-        .order('created_at')
-
-      const hourlyVotes = votesHistory?.reduce((acc: Record<string, number>, vote) => {
-        const hour = new Date(vote.created_at).getHours()
-        acc[hour] = (acc[hour] || 0) + 1
-        return acc
-      }, {}) || {}
-
-      const votingHistory = Object.entries(hourlyVotes).map(([hour, count]) => ({
-        hour: `${hour}:00`,
-        count
-      })).sort((a, b) => parseInt(a.hour) - parseInt(b.hour))
-
-      setStats({
-        totalVoters,
-        votedCount,
-        notVotedCount,
-        votingPercentage,
-        candidateResults,
-        votingHistory
-      })
-    } catch (error) {
-      console.error('Error fetching results:', error)
-      setError('Gagal memuat hasil voting')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function fetchClassStats() {
-    try {
-      const { data: voters, error } = await supabaseClient
-        .from('voters')
-        .select('class, has_voted')
-        .order('class')
-
-      if (error) throw error
-
-      const classMap = new Map<string, { total: number; voted: number }>()
-
-      voters?.forEach(voter => {
-        const currentClass = classMap.get(voter.class) || { total: 0, voted: 0 }
-        classMap.set(voter.class, {
-          total: currentClass.total + 1,
-          voted: currentClass.voted + (voter.has_voted ? 1 : 0)
-        })
-      })
-
-      const formattedStats = Array.from(classMap.entries()).map(([className, stats]) => ({
-        className,
-        totalStudents: stats.total,
-        votedCount: stats.voted,
-        notVotedCount: stats.total - stats.voted,
-        percentage: stats.total === 0 ? 0 : Number(((stats.voted / stats.total) * 100).toFixed(2))
-      }))
-
-      setClassStats(formattedStats.sort((a, b) => a.className.localeCompare(b.className)))
-
-    } catch (error) {
-      console.error('Error fetching class stats:', error)
-      toast.error('Gagal memuat statistik kelas')
-    }
-  }
+  const loading = votingLoading || classLoading
+  const error = votingError || classError
 
   const handleCSVDownload = () => {
     if (!stats) return
@@ -366,7 +266,7 @@ export default function ResultsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header Section */}
         <div className="mb-8">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-3xl font-bold text-gray-900"
@@ -376,6 +276,23 @@ export default function ResultsPage() {
           <p className="mt-2 text-gray-600">
             Real-time monitoring hasil pemilihan OSIS
           </p>
+
+          {/* Real-time indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="flex items-center gap-2 mt-4"
+          >
+            <motion.div
+              className="w-3 h-3 bg-green-500 rounded-full"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+            <span className="text-sm text-gray-500">
+              Data diperbarui secara real-time • Terakhir diperbarui: {new Date().toLocaleTimeString('id-ID')}
+            </span>
+          </motion.div>
         </div>
 
         {/* Action Buttons */}
@@ -703,4 +620,4 @@ export default function ResultsPage() {
       </div>
     </div>
   )
-} 
+}

@@ -11,6 +11,7 @@ import { supabaseClient } from '@/lib/auth'
 import WinnerAnnouncement from '@/components/WinnerAnnouncement'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
+import { useRealtimeVotes } from '@/hooks/useRealtimeVotes'
 
 interface Candidate {
   id: string
@@ -54,8 +55,6 @@ const staggerContainer = {
 export default function HomePage() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(true)
-  const [votingStats, setVotingStats] = useState<VotingStats | null>(null)
-  const [isLoadingStats, setIsLoadingStats] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'visi' | 'misi'>('visi')
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null)
@@ -69,6 +68,9 @@ export default function HomePage() {
   const searchParams = useSearchParams()
   const message = searchParams.get('message')
 
+  // Use real-time voting hook
+  const { votingStats, isLoading: isLoadingStats } = useRealtimeVotes()
+
   useEffect(() => {
     if (message) {
       toast.error(message)
@@ -78,67 +80,7 @@ export default function HomePage() {
   useEffect(() => {
     fetchCandidates()
     fetchSettings()
-    fetchVotingStats()
   }, [])
-
-  async function fetchVotingStats() {
-    try {
-      setIsLoadingStats(true)
-
-      // Ambil total pemilih
-      const { data: votersData, error: votersError } = await supabaseClient
-        .from('voters')
-        .select('id, has_voted')
-
-      if (votersError) throw votersError
-
-      // Ambil data kandidat
-      const { data: candidatesData, error: candidatesError } = await supabaseClient
-        .from('candidates')
-        .select('*')
-        .order('candidate_number')
-
-      if (candidatesError) throw candidatesError
-
-      // Ambil data votes dengan join ke candidates
-      const { data: votesData, error: votesError } = await supabaseClient
-        .from('votes')
-        .select(`
-          id,
-          candidate_id,
-          candidates (*)
-        `)
-
-      if (votesError) throw votesError
-
-      const totalVoters = votersData?.length || 0
-      const totalVotes = votesData?.length || 0
-      const participationRate = totalVoters > 0 ? (totalVotes / totalVoters) * 100 : 0
-
-      // Hitung hasil per kandidat
-      const candidateResults = candidatesData?.map(candidate => {
-        const voteCount = votesData?.filter(vote => vote.candidate_id === candidate.id).length || 0
-        const percentage = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0
-
-        return {
-          candidate,
-          voteCount,
-          percentage
-        }
-      }).sort((a, b) => b.voteCount - a.voteCount) || []
-
-      setVotingStats({
-        totalVoters,
-        totalVotes,
-        participationRate,
-        candidateResults
-      })
-    } catch (error) {
-      console.error('Error fetching voting stats:', error)
-    } finally {
-      setIsLoadingStats(false)
-    }
-  }
 
   async function fetchSettings() {
     try {
