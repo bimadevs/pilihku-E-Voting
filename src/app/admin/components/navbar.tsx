@@ -12,7 +12,6 @@ const navigation = [
   { name: 'Pemilih', href: '/admin/voters' },
   { name: 'Hasil', href: '/admin/results' },
   { name: 'Jadwal', href: '/admin/schedule' },
-  { name: 'Pengaturan', href: '/admin/settings' },
 ]
 
 export function Navbar() {

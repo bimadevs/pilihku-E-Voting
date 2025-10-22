@@ -266,32 +266,59 @@ export default function ResultsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header Section */}
         <div className="mb-8">
-          <motion.h1
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-bold text-gray-900"
+            className="flex items-center justify-between"
           >
-            Dashboard Hasil Pemilihan
-          </motion.h1>
-          <p className="mt-2 text-gray-600">
-            Real-time monitoring hasil pemilihan OSIS
-          </p>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Dashboard Hasil Pemilihan
+              </h1>
+              <p className="mt-2 text-gray-600">
+                Real-time monitoring hasil pemilihan OSIS dengan analitik mendalam
+              </p>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-600 rounded-xl
+                         hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500
+                         focus:ring-offset-2 transition-all duration-200 text-sm font-medium"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </motion.button>
+            </div>
+          </motion.div>
 
           {/* Real-time indicator */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="flex items-center gap-2 mt-4"
+            className="flex items-center gap-2 mt-6 p-4 bg-green-50 rounded-xl border border-green-200"
           >
             <motion.div
               className="w-3 h-3 bg-green-500 rounded-full"
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
-            <span className="text-sm text-gray-500">
-              Data diperbarui secara real-time • Terakhir diperbarui: {new Date().toLocaleTimeString('id-ID')}
-            </span>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-800">
+                🔴 LIVE: Data diperbarui secara real-time
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                Terakhir diperbarui: {new Date().toLocaleTimeString('id-ID')} •
+                Auto-refresh setiap detik saat ada perubahan
+              </p>
+            </div>
           </motion.div>
         </div>
 
@@ -360,154 +387,317 @@ export default function ResultsPage() {
           </motion.div>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-          <div className="border-b border-gray-200 mb-6">
-            <nav className="-mb-px flex space-x-8">
-              {['overview', 'details', 'trends'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`
-                    py-4 px-1 border-b-2 font-medium text-sm
-                    ${activeTab === tab
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
-                  `}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </nav>
+        {/* Enhanced Analytics Section */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+          {/* Main Charts */}
+          <div className="xl:col-span-2">
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">Analitik Real-time</h2>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                    activeTab === 'overview' ? 'bg-blue-100 text-blue-800' :
+                    activeTab === 'details' ? 'bg-green-100 text-green-800' :
+                    'bg-purple-100 text-purple-800'
+                  }`}>
+                    {activeTab === 'overview' ? 'Ringkasan' :
+                     activeTab === 'details' ? 'Detail' : 'Tren'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tab Navigation */}
+              <div className="flex space-x-1 bg-gray-100 rounded-xl p-1 mb-6">
+                {[
+                  { id: 'overview', label: 'Ringkasan', icon: '📊' },
+                  { id: 'details', label: 'Detail', icon: '📋' },
+                  { id: 'trends', label: 'Tren', icon: '📈' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
+                      activeTab === tab.id
+                        ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                    }`}
+                  >
+                    <span>{tab.icon}</span>
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab Content */}
+              <div className="min-h-[400px]">
+                {activeTab === 'overview' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100"
+                    >
+                      <h3 className="text-base font-semibold mb-3 text-blue-900">📊 Perolehan Suara</h3>
+                      <div className="h-48">
+                        <Bar
+                          data={barChartData}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: {
+                                display: false,
+                              },
+                            },
+                            scales: {
+                              y: {
+                                beginAtZero: true,
+                                grid: {
+                                  display: false
+                                },
+                                ticks: {
+                                  font: {
+                                    size: 10
+                                  }
+                                }
+                              },
+                              x: {
+                                grid: {
+                                  display: false
+                                },
+                                ticks: {
+                                  font: {
+                                    size: 10
+                                  }
+                                }
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100"
+                    >
+                      <h3 className="text-base font-semibold mb-3 text-green-900">🎯 Partisipasi Pemilih</h3>
+                      <div className="h-48 flex items-center justify-center">
+                        <Doughnut
+                          data={doughnutData}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: {
+                                position: 'bottom',
+                                labels: {
+                                  font: {
+                                    size: 10
+                                  },
+                                  padding: 10
+                                }
+                              }
+                            },
+                            cutout: '50%'
+                          }}
+                        />
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+
+                {activeTab === 'details' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-br from-gray-50 to-slate-50 p-6 rounded-xl border border-gray-100"
+                  >
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900">📋 Detail Per Kandidat</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead>
+                          <tr className="bg-gray-50">
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Nomor Urut
+                            </th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Ketua
+                            </th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Wakil
+                            </th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Suara
+                            </th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Persentase
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {stats.candidateResults.map((result, index) => (
+                            <tr key={result.candidateNumber} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                                  index === 0 ? 'bg-yellow-100 text-yellow-800' :
+                                  index === 1 ? 'bg-gray-100 text-gray-800' :
+                                  'bg-orange-100 text-orange-800'
+                                }`}>
+                                  #{result.candidateNumber}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {result.ketuaName}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {result.wakilName}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {result.voteCount}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className={`h-2 rounded-full ${
+                                        index === 0 ? 'bg-blue-500' :
+                                        index === 1 ? 'bg-green-500' :
+                                        'bg-purple-500'
+                                      }`}
+                                      style={{ width: `${result.percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {result.percentage.toFixed(1)}%
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === 'trends' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100"
+                  >
+                    <h3 className="text-base font-semibold mb-3 text-purple-900">📈 Tren Voting per Jam</h3>
+                    <div className="h-64">
+                      <Line
+                        data={votingTrendData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              display: false,
+                            },
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              grid: {
+                                color: 'rgba(139, 92, 246, 0.1)',
+                              },
+                              ticks: {
+                                font: {
+                                  size: 10
+                                }
+                              }
+                            },
+                            x: {
+                              grid: {
+                                display: false
+                              },
+                              ticks: {
+                                font: {
+                                  size: 10
+                                }
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Tab Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {activeTab === 'overview' && (
-              <>
-                <div className="bg-white p-6 rounded-xl">
-                  <h3 className="text-lg font-semibold mb-4">Perolehan Suara</h3>
-                  <Bar
-                    data={barChartData}
-                    options={{
-                      responsive: true,
-                      plugins: {
-                        legend: {
-                          display: false,
-                        },
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          grid: {
-                            display: false
-                          }
-                        },
-                        x: {
-                          grid: {
-                            display: false
-                          }
-                        }
-                      }
-                    }}
-                  />
-                </div>
-                <div className="bg-white p-6 rounded-xl">
-                  <h3 className="text-lg font-semibold mb-4">Partisipasi Pemilih</h3>
-                  <Doughnut
-                    data={doughnutData}
-                    options={{
-                      responsive: true,
-                      plugins: {
-                        legend: {
-                          position: 'bottom',
-                        }
-                      },
-                      cutout: '60%'
-                    }}
-                  />
-                </div>
-              </>
-            )}
-
-            {activeTab === 'trends' && (
-              <div className="col-span-2 bg-white p-6 rounded-xl">
-                <h3 className="text-lg font-semibold mb-4">Tren Voting per Jam</h3>
-                <Line
-                  data={votingTrendData}
-                  options={{
-                    responsive: true,
-                    plugins: {
-                      legend: {
-                        display: false,
-                      },
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        grid: {
-                          color: 'rgba(0, 0, 0, 0.05)',
-                        }
-                      },
-                      x: {
-                        grid: {
-                          display: false
-                        }
-                      }
-                    }
-                  }}
-                />
+          {/* Sidebar Stats */}
+          <div className="space-y-6">
+            {/* Top Performers */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">🏆 Top Performers</h3>
+              <div className="space-y-3">
+                {stats.candidateResults.slice(0, 3).map((result, index) => (
+                  <div key={result.candidateNumber} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${
+                      index === 0 ? 'bg-yellow-500' :
+                      index === 1 ? 'bg-gray-400' :
+                      'bg-orange-400'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">
+                        Paslon {result.candidateNumber}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {result.voteCount} suara
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-blue-600">
+                        {result.percentage.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
+            </motion.div>
 
-            {activeTab === 'details' && (
-              <div className="col-span-2">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Nomor Urut
-                        </th>
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Ketua
-                        </th>
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Wakil
-                        </th>
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Perolehan Suara
-                        </th>
-                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Persentase
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {stats.candidateResults.map((result) => (
-                        <tr key={result.candidateNumber}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            Paslon {result.candidateNumber}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {result.ketuaName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {result.wakilName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {result.voteCount}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {result.percentage.toFixed(1)}%
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {/* Quick Stats */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Quick Stats</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total Voters:</span>
+                  <span className="font-bold text-gray-900">{stats.totalVoters}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Participation:</span>
+                  <span className="font-bold text-green-600">
+                    {stats.votingPercentage.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Leading Gap:</span>
+                  <span className="font-bold text-blue-600">
+                    {stats.candidateResults.length > 1 ?
+                      (stats.candidateResults[0].voteCount - stats.candidateResults[1].voteCount) : 0
+                    } suara
+                  </span>
                 </div>
               </div>
-            )}
+            </motion.div>
           </div>
         </div>
 
