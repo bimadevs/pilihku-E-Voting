@@ -79,7 +79,7 @@ export default function VotingResultsSection({ votingStats, isLoadingStats }: Vo
               variants={fadeInUp}
             >
               <p className="text-sm text-gray-500">
-                Data diperbarui secara real-time • Terakhir diperbarui: {new Date().toLocaleTimeString('id-ID')}
+                Data diperbarui secara real-time tanpa reload • Optimistic updates aktif
               </p>
             </motion.div>
           </motion.div>

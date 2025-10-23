@@ -191,25 +191,27 @@ export default function ResultsPage() {
     })
   }
 
-  // Filter dan sort data
+  // Filter dan sort data dengan optimasi untuk mencegah infinite re-renders
   const filteredAndSortedClassStats = useMemo(() => {
+    if (!classStats || classStats.length === 0) return []
+
     let filtered = classStats
-    
+
     // Apply filter
     if (classFilter) {
-      filtered = classStats.filter(stat => 
+      filtered = classStats.filter(stat =>
         stat.className.toLowerCase().includes(classFilter.toLowerCase())
       )
     }
 
     // Apply sorting
-    return filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       if (sortConfig.direction === 'asc') {
         return a[sortConfig.key] > b[sortConfig.key] ? 1 : -1
       }
       return a[sortConfig.key] < b[sortConfig.key] ? 1 : -1
     })
-  }, [classStats, classFilter, sortConfig])
+  }, [classStats, classFilter, sortConfig.key, sortConfig.direction])
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -282,19 +284,9 @@ export default function ResultsPage() {
 
             {/* Quick Actions */}
             <div className="flex items-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => window.location.reload()}
-                className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-600 rounded-xl
-                         hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500
-                         focus:ring-offset-2 transition-all duration-200 text-sm font-medium"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh
-              </motion.button>
+              <div className="text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
+                🔄 Auto-refresh aktif
+              </div>
             </div>
           </motion.div>
 
@@ -305,18 +297,13 @@ export default function ResultsPage() {
             transition={{ delay: 0.5 }}
             className="flex items-center gap-2 mt-6 p-4 bg-green-50 rounded-xl border border-green-200"
           >
-            <motion.div
-              className="w-3 h-3 bg-green-500 rounded-full"
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
             <div className="flex-1">
               <p className="text-sm font-medium text-green-800">
                 🔴 LIVE: Data diperbarui secara real-time
               </p>
               <p className="text-xs text-green-600 mt-1">
-                Terakhir diperbarui: {new Date().toLocaleTimeString('id-ID')} •
-                Auto-refresh setiap detik saat ada perubahan
+                Optimistic updates aktif • Tidak ada reload
               </p>
             </div>
           </motion.div>
