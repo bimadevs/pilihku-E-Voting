@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { Navbar } from './components/navbar'
 
 export default function AdminLayout({
@@ -7,6 +8,13 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const isLoginPage = pathname === '/admin/login'
+
+  if (isLoginPage) {
+    return <>{children}</>
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <Navbar />

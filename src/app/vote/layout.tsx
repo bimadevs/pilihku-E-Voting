@@ -1,25 +1,22 @@
-'use client'
-
+import type { Metadata } from "next"
 import StructuredData from "../components/StructuredData"
 
+export const metadata: Metadata = {
+  title: "Bilik Suara - PilihKu E-Voting OSIS",
+  description: "Bilik suara digital pemilihan Ketua dan Wakil Ketua OSIS. Berikan hak suaramu dengan aman, transparan, dan rahasia.",
+}
 
-export default function AdminLayout({
+export default function VoteLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="light">
-      <head>
-        <StructuredData />
-      </head>
-      <div className="min-h-screen bg-gray-100">
-        <div className="pt-16"> {/* Add padding top to account for fixed navbar */}
-          <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            {children}
-          </main>
-        </div>
+    <>
+      <StructuredData />
+      <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+        {children}
       </div>
-    </html>
+    </>
   )
 } 

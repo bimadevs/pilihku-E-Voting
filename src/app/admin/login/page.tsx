@@ -2,15 +2,28 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabaseClient } from '@/lib/auth'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2, Shield, Mail, Lock } from 'lucide-react'
-import Image from 'next/image'
+import { 
+  Loader2, 
+  ShieldCheck, 
+  Mail, 
+  Lock, 
+  ArrowLeft, 
+  Eye, 
+  EyeOff, 
+  AlertCircle,
+  KeyRound,
+  FileCheck2,
+  LockKeyhole
+} from 'lucide-react'
 
 export default function AdminLogin() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,7 +39,13 @@ export default function AdminLogin() {
       })
 
       if (error) {
-        setError(error.message)
+        if (error.message.toLowerCase().includes('invalid login credentials')) {
+          setError('Email atau kata sandi tidak valid. Pastikan akun panitia Anda telah didaftarkan.')
+        } else if (error.message.toLowerCase().includes('email not confirmed')) {
+          setError('Alamat email belum dikonfirmasi. Silakan periksa email aktivasi Anda.')
+        } else {
+          setError(error.message)
+        }
         return
       }
 
@@ -36,7 +55,7 @@ export default function AdminLogin() {
         router.refresh()
       }
     } catch (err) {
-      setError('Terjadi kesalahan saat login')
+      setError('Terjadi kendala jaringan saat menghubungi server autentikasi.')
       console.error('Login error:', err)
     } finally {
       setLoading(false)
@@ -44,139 +63,228 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
-      <div className="container mx-auto px-4 h-screen flex flex-col items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
+    <div className="min-h-screen grid lg:grid-cols-12 bg-slate-950 selection:bg-indigo-600 selection:text-white">
+      {/* Sisi Kiri: Institutional Brand & Integrity Mandate */}
+      <aside className="lg:col-span-5 xl:col-span-5 bg-slate-950 text-slate-100 flex flex-col justify-between p-8 sm:p-12 lg:p-14 border-b lg:border-b-0 lg:border-r border-slate-800 relative overflow-hidden">
+        {/* Subtle grid pattern texture */}
+        <div 
+          className="absolute inset-0 opacity-[0.03] pointer-events-none" 
+          style={{ 
+            backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+            backgroundSize: '24px 24px' 
+          }} 
+        />
+
+        {/* Top: Navigasi Kembali */}
+        <div className="relative z-10">
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-white transition-colors group"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1 text-slate-400 group-hover:text-white" />
+            <span>Kembali ke Beranda Pemilih</span>
+          </Link>
+        </div>
+
+        {/* Center: Context & Civic Mandate */}
+        <div className="relative z-10 py-10 lg:py-0 max-w-md">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950/70 border border-indigo-800/60 text-indigo-300 text-xs font-medium mb-6">
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span>Pusat Kendali Pemilihan OSIS</span>
+          </div>
+
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white leading-tight">
+            Panel Pengawasan & Rekapitulasi Suara
+          </h2>
+
+          <p className="mt-4 text-sm leading-relaxed text-slate-400">
+            Akses resmi panitia pemilihan dan pembina OSIS untuk mengelola daftar pemilih tetap, verifikasi bilik suara, serta memantau perolehan suara secara transparan dan terenkripsi.
+          </p>
+
+          {/* Protokol Integritas */}
+          <div className="mt-8 pt-8 border-t border-slate-800/80 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
+                <LockKeyhole className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-200">Enkripsi Sesi 256-Bit</p>
+                <p className="text-xs text-slate-400 mt-0.5">Seluruh sesi diautentikasi dengan token aman berbasis Row Level Security.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
+                <FileCheck2 className="w-4 h-4 text-indigo-400" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-200">Integritas Suara Tunggal</p>
+                <p className="text-xs text-slate-400 mt-0.5">Sistem memastikan setiap siswa hanya memiliki satu hak suara sah tanpa duplikasi.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom: Institutional Footer */}
+        <div className="relative z-10 pt-6 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+          <span className="font-mono text-slate-400">PilihKu v2.0 • E-Voting</span>
+          <span className="text-slate-400">Ruang Panitia</span>
+        </div>
+      </aside>
+
+      {/* Sisi Kanan: Modern Authentication Console */}
+      <main className="lg:col-span-7 xl:col-span-7 bg-slate-50 flex items-center justify-center p-6 sm:p-12 lg:p-16">
+        <motion.div 
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           className="w-full max-w-md"
         >
-          {/* Decorative Elements */}
-          <div className="absolute top-0 left-0 w-full h-64 overflow-hidden -z-10">
-            <div className="absolute w-96 h-96 -top-48 -left-48 bg-blue-100 rounded-full mix-blend-multiply filter blur-xl opacity-70" />
-            <div className="absolute w-96 h-96 -top-48 -right-48 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-70" />
+          {/* Mobile Badge (tampil di layar kecil) */}
+          <div className="lg:hidden mb-6 flex items-center justify-between">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Beranda Pemilih
+            </Link>
+            <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+              Admin Console
+            </span>
           </div>
 
-          {/* Header Section */}
-          <div className="text-center mb-8">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", duration: 0.8 }}
-              className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg"
-            >
-              <Shield className="w-10 h-10 text-white" />
-            </motion.div>
-            <motion.h1 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600"
-            >
-              Admin Dashboard
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="mt-2 text-gray-600"
-            >
-              Masuk ke panel admin untuk mengelola sistem
-            </motion.p>
+          {/* Form Header */}
+          <div className="mb-8">
+            <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm mb-4">
+              <KeyRound className="w-6 h-6 text-slate-100" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+              Masuk ke Panel Kendali
+            </h1>
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              Silakan masukkan kredensial akun panitia atau pembina OSIS yang terverifikasi untuk melanjutkan.
+            </p>
           </div>
 
-          {/* Login Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 }}
-            className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 border border-gray-100 relative overflow-hidden"
-          >
-            {/* Decorative Corner */}
-            <div className="absolute -top-12 -right-12 w-24 h-24 bg-blue-50 rounded-full" />
-            <div className="absolute -bottom-12 -left-12 w-24 h-24 bg-indigo-50 rounded-full" />
-
-            <AnimatePresence mode="wait">
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl"
-                >
-                  <p className="text-sm text-red-600 flex items-center">
-                    <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                    {error}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                    placeholder="admin@example.com"
-                    required
-                    disabled={loading}
-                  />
-                  <Mail className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                    placeholder="••••••••"
-                    required
-                    disabled={loading}
-                  />
-                  <Lock className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
-                </div>
-              </div>
-
-              <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-xl 
-                         hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 
-                         focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 
-                         disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          {/* Error Banner */}
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -8, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="mb-6 overflow-hidden"
               >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Memproses...
-                  </span>
-                ) : (
-                  'Masuk'
-                )}
-              </motion.button>
-            </form>
-          </motion.div>
+                <div 
+                  role="alert" 
+                  className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-900 flex items-start gap-3 text-sm shadow-sm"
+                >
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-red-950 text-xs uppercase tracking-wider">Otorisasi Ditolak</p>
+                    <p className="text-red-800 mt-0.5 text-xs leading-relaxed">{error}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
+          {/* Authentication Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label 
+                htmlFor="admin-email" 
+                className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2"
+              >
+                Alamat Email Panitia
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <input
+                  id="admin-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="panitia@sekolah.sch.id"
+                  required
+                  autoComplete="email"
+                  disabled={loading}
+                  className="w-full pl-10 pr-4 py-3 text-sm bg-white rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+              </div>
+            </div>
 
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label 
+                  htmlFor="admin-password" 
+                  className="block text-xs font-semibold uppercase tracking-wider text-slate-700"
+                >
+                  Kata Sandi
+                </label>
+                <span className="text-xs text-slate-500">
+                  Akses Terbatas
+                </span>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <input
+                  id="admin-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  required
+                  autoComplete="current-password"
+                  disabled={loading}
+                  className="w-full pl-10 pr-11 py-3 text-sm bg-white rounded-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 transition-colors focus:outline-none"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-2 bg-slate-900 hover:bg-slate-800 text-white font-medium text-sm py-3 px-4 rounded-xl transition-all duration-150 shadow-sm hover:shadow active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
+                  <span>Memverifikasi Kredensial...</span>
+                </>
+              ) : (
+                <span>Masuk ke Panel Kendali</span>
+              )}
+            </button>
+          </form>
+
+          {/* Security & Support Note */}
+          <div className="mt-8 pt-6 border-t border-slate-200">
+            <p className="text-xs text-slate-500 text-center leading-relaxed">
+              Mengalami kendala otentikasi atau pergantian pengurus panitia? Hubungi <span className="font-semibold text-slate-700">Pembina OSIS</span> atau administrator server sekolah.
+            </p>
+          </div>
         </motion.div>
-      </div>
+      </main>
     </div>
   )
 } 

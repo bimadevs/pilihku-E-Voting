@@ -108,6 +108,12 @@ export default function CandidatesPage() {
         throw new Error('Semua field harus diisi')
       }
 
+      // Pastikan sesi admin masih aktif
+      const { data: { session } } = await supabaseClient.auth.getSession()
+      if (!session) {
+        throw new Error('Sesi admin telah berakhir atau tidak valid. Silakan login kembali ke panel admin.')
+      }
+
       let ketuaPhotoUrl = null
       let wakilPhotoUrl = null
 
@@ -183,7 +189,18 @@ export default function CandidatesPage() {
           wakil_photo_url: wakilPhotoUrl
         }])
 
-      if (insertError) throw insertError
+      if (insertError) {
+        // Hapus foto yang sudah terunggah jika penyimpanan data kandidat gagal
+        if (ketuaPhotoUrl) {
+          const path = ketuaPhotoUrl.split('candidate-photos/')[1]
+          if (path) await supabaseClient.storage.from('candidate-photos').remove([path])
+        }
+        if (wakilPhotoUrl) {
+          const path = wakilPhotoUrl.split('candidate-photos/')[1]
+          if (path) await supabaseClient.storage.from('candidate-photos').remove([path])
+        }
+        throw insertError
+      }
 
       showNotification('Kandidat berhasil ditambahkan', 'success')
       fetchCandidates()
@@ -199,9 +216,16 @@ export default function CandidatesPage() {
         ketua_photo: null,
         wakil_photo: null
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error)
-      if (error instanceof Error) {
+      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
+        showNotification(
+          'Gagal (RLS): Tabel "candidates" belum memiliki policy INSERT untuk role admin di Supabase SQL Editor.',
+          'error'
+        )
+      } else if (error instanceof Error) {
+        showNotification(error.message, 'error')
+      } else if (error?.message) {
         showNotification(error.message, 'error')
       } else {
         showNotification('Gagal menambahkan kandidat', 'error')
@@ -289,12 +313,19 @@ export default function CandidatesPage() {
 
       showNotification('Kandidat berhasil dihapus', 'success')
       fetchCandidates()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error)
-      showNotification(
-        error instanceof Error ? error.message : 'Gagal menghapus kandidat', 
-        'error'
-      )
+      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
+        showNotification(
+          'Gagal (RLS): Belum ada policy DELETE untuk admin pada tabel candidates/votes di Supabase.',
+          'error'
+        )
+      } else {
+        showNotification(
+          error instanceof Error ? error.message : error?.message || 'Gagal menghapus kandidat', 
+          'error'
+        )
+      }
     }
   }
 

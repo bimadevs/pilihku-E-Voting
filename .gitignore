@@ -11,6 +11,20 @@
 !.yarn/versions
 .kiro
 .vscode
+.agent
+.agents
+.claude
+.codex
+.cursor
+.dsh
+.gemini
+.grok
+.hermes
+.impeccable
+.opencode
+.pi
+.qoder
+.vibe
 # testing
 /coverage
 

@@ -17,7 +17,7 @@ export function useRealtimeVotes(initialData: any) {
         (payload) => {
           // Update data ketika ada vote baru
           setData((currentData: any) => {
-            const newVote = payload.new
+            const _newVote = payload.new
             return {
               ...currentData,
               // Update logika sesuai struktur data Anda

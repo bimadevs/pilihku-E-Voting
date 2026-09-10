@@ -155,7 +155,7 @@ export default function VotersPage() {
             .from('voters')
             .select('id')
             .eq('nis', rowData.nis)
-            .single()
+            .maybeSingle()
 
           if (existingVoter) {
             console.log(`NIS ${rowData.nis} sudah terdaftar`)
@@ -216,26 +216,45 @@ export default function VotersPage() {
     setLoading(true)
 
     try {
+      const nis = formData.nis.trim()
+      const fullName = formData.full_name.trim()
+      const voterClass = formData.class.trim()
+
+      if (!nis || !fullName || !voterClass) {
+        showNotification('Semua data pemilih (NIS, Nama Lengkap, Kelas) wajib diisi', 'error')
+        return
+      }
+
+      // Verifikasi sesi admin aktif
+      const { data: { session } } = await supabaseClient.auth.getSession()
+      if (!session) {
+        showNotification('Sesi admin telah berakhir. Silakan login kembali.', 'error')
+        return
+      }
+
       const { error } = await supabaseClient
         .from('voters')
-        .insert([formData])
+        .insert([{
+          nis,
+          full_name: fullName,
+          class: voterClass,
+          has_voted: false
+        }])
 
       if (error) throw error
 
-      await toast.promise(
-        Promise.resolve(), // Gunakan Promise.resolve() karena operasi sudah selesai
-        {
-          loading: 'Menambahkan pemilih...',
-          success: 'Pemilih berhasil ditambahkan',
-          error: 'Gagal menambahkan pemilih'
-        }
-      )
-
+      showNotification('Pemilih berhasil ditambahkan', 'success')
       await fetchVoters()
       setFormData({ nis: '', full_name: '', class: '' })
-    } catch (error) {
-      console.error('Error:', error)
-      toast.error('Gagal menambahkan pemilih')
+    } catch (error: any) {
+      console.error('Error in handleSubmit:', error)
+      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
+        showNotification('Akses ditolak (RLS): Tabel "voters" belum memiliki policy INSERT untuk admin di Supabase SQL Editor.', 'error')
+      } else if (error?.code === '23505' || error?.message?.toLowerCase().includes('unique constraint') || error?.message?.includes('voters_nis_key')) {
+        showNotification(`NIS ${formData.nis} sudah terdaftar. Gunakan NIS lain.`, 'error')
+      } else {
+        showNotification(error?.message || 'Gagal menambahkan pemilih', 'error')
+      }
     } finally {
       setLoading(false)
     }
@@ -339,9 +358,13 @@ export default function VotersPage() {
           : 'Data'} pemilih berhasil dihapus`, 
         'success'
       )
-      await fetchVoters()
-    } catch (error) {
-      showNotification('Gagal menghapus data pemilih', 'error')
+    } catch (error: any) {
+      console.error('Error in handleConfirmDelete:', error)
+      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
+        showNotification('Akses ditolak (RLS): Tabel "voters" atau "votes" belum memiliki policy DELETE untuk admin di Supabase SQL Editor.', 'error')
+      } else {
+        showNotification(error?.message || 'Gagal menghapus data pemilih', 'error')
+      }
     } finally {
       setLoading(false)
     }

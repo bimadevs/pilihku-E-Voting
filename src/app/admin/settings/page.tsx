@@ -90,6 +90,12 @@ export default function SettingsPage() {
 
   async function fetchSettings() {
     try {
+      const { data: { session } } = await supabaseClient.auth.getSession()
+      if (!session) {
+        toast.error('Sesi admin telah berakhir. Silakan login kembali.')
+        return
+      }
+
       const { data: existingData, error: checkError } = await supabaseClient
         .from('settings')
         .select('*')
@@ -125,7 +131,11 @@ export default function SettingsPage() {
       }
     } catch (error: any) {
       console.error('Error in fetchSettings:', error)
-      toast.error('Gagal memuat pengaturan')
+      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
+        toast.error('Akses ditolak (RLS): Tabel "settings" belum memiliki policy INSERT/ALL untuk admin di Supabase SQL Editor.')
+      } else {
+        toast.error(error?.message || 'Gagal memuat pengaturan')
+      }
     }
   }
 
@@ -160,7 +170,11 @@ export default function SettingsPage() {
       await fetchSettings()
     } catch (error: any) {
       console.error('Error in handleSubmit:', error)
-      toast.error(error.message || 'Gagal menyimpan pengaturan')
+      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
+        toast.error('Akses ditolak (RLS): Tabel "settings" belum memiliki policy UPDATE/ALL untuk admin di Supabase SQL Editor.')
+      } else {
+        toast.error(error.message || 'Gagal menyimpan pengaturan')
+      }
     } finally {
       setLoading(false)
     }
@@ -191,9 +205,13 @@ export default function SettingsPage() {
       setAnnouncementTime('')
       toast.success('Pengaturan berhasil direset')
       await fetchSettings()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error)
-      toast.error('Gagal mereset pengaturan')
+      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
+        toast.error('Akses ditolak (RLS): Tabel "settings" belum memiliki policy UPDATE/ALL untuk admin di Supabase SQL Editor.')
+      } else {
+        toast.error(error?.message || 'Gagal mereset pengaturan')
+      }
     } finally {
       setLoading(false)
     }

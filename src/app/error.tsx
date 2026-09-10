@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 
 export default function Error({
   error,
@@ -65,7 +66,7 @@ export default function Error({
             Coba Lagi
           </button>
 
-          <a
+          <Link
             href="/"
             className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 
             text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-200 
@@ -85,7 +86,7 @@ export default function Error({
               />
             </svg>
             Kembali ke Beranda
-          </a>
+          </Link>
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://pilihku.bimadev.xyz'),
   title: "Pilihku - Suaramu Masa Depan Sekolah Kita",
   description: "Pilihku adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OSIS di sekolah. Dibangun dengan Next.js 14, Supabase, dan Tailwind CSS.",
   keywords: 'e-voting, OSIS, pemilihan ketua OSIS, voting online sekolah, sistem pemilihan digital',

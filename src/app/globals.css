@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+::selection {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
 @layer utilities {
   .animate-blob {
     animation: blob 8s infinite;

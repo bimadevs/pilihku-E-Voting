@@ -113,134 +113,243 @@ npm run dev
 yarn dev
 ```
 
-## 💾 Struktur Database
-> Copy dan paste ke supabase SQL Editor
+## 💾 Setup Database Supabase (Sekali Copy-Paste)
 
-### Tabel `voters`
+> **Cara Cepat:** Buka **Supabase Dashboard** > pilih proyek Anda > buka menu **SQL Editor** > salin seluruh query SQL di bawah ini, lalu klik tombol **Run**.
+>
+> *(Query ini juga tersedia di file [`supabase_setup.sql`](./supabase_setup.sql))*
+
 ```sql
-create table public.voters (
-  id uuid not null default extensions.uuid_generate_v4 (),
-  nis text not null,
-  full_name text not null,
-  class text not null,
-  has_voted boolean null default false,
-  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
-  constraint voters_pkey primary key (id),
-  constraint voters_nis_key unique (nis)
+-- ==============================================================================
+-- PILIHKU E-VOTING: SETUP LENGKAP DATABASE & ROW LEVEL SECURITY (RLS) SUPABASE
+-- ==============================================================================
+
+-- 0. AKTIFKAN EKSTENSI UUID
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ==============================================================================
+-- 1. PEMBUATAN TABEL & RELASI
+-- ==============================================================================
+
+-- Tabel Candidates (Data Pasangan Calon Ketua & Wakil OSIS)
+CREATE TABLE IF NOT EXISTS public.candidates (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  candidate_number integer NOT NULL,
+  ketua_name text NOT NULL,
+  wakil_name text NOT NULL,
+  visi text NOT NULL,
+  misi text NOT NULL,
+  photo_url text NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  ketua_photo_url text NULL,
+  wakil_photo_url text NULL,
+  ketua_class text NULL,
+  wakil_class text NULL,
+  program_kerja text NULL,
+  CONSTRAINT candidates_pkey PRIMARY KEY (id)
 ) TABLESPACE pg_default;
-```
 
-### Tabel `candidates`
-```sql
-create table public.candidates (
-  id uuid not null default extensions.uuid_generate_v4 (),
-  candidate_number integer not null,
-  ketua_name text not null,
-  wakil_name text not null,
-  visi text not null,
-  misi text not null,
-  photo_url text null,
-  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
-  ketua_photo_url text null,
-  wakil_photo_url text null,
-  ketua_class text null,
-  wakil_class text null,
-  program_kerja text null,
-  constraint candidates_pkey primary key (id)
+CREATE UNIQUE INDEX IF NOT EXISTS candidates_candidate_number_key 
+ON public.candidates USING btree (candidate_number) TABLESPACE pg_default;
+
+
+-- Tabel Voters (Daftar Pemilih Tetap / Siswa)
+CREATE TABLE IF NOT EXISTS public.voters (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  nis text NOT NULL,
+  full_name text NOT NULL,
+  class text NOT NULL,
+  has_voted boolean NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT voters_pkey PRIMARY KEY (id),
+  CONSTRAINT voters_nis_key UNIQUE (nis)
 ) TABLESPACE pg_default;
 
-create unique INDEX IF not exists candidates_candidate_number_key on public.candidates using btree (candidate_number) TABLESPACE pg_default;
-```
 
-### Tabel `votes`
-```sql
-create table public.votes (
-  id uuid not null default extensions.uuid_generate_v4 (),
-  voter_id uuid null,
-  candidate_id uuid null,
-  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
-  constraint votes_pkey primary key (id),
-  constraint votes_candidate_id_fkey foreign KEY (candidate_id) references candidates (id),
-  constraint votes_voter_id_fkey foreign KEY (voter_id) references voters (id)
+-- Tabel Votes (Surat Suara Masuk)
+CREATE TABLE IF NOT EXISTS public.votes (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  voter_id uuid NULL,
+  candidate_id uuid NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT votes_pkey PRIMARY KEY (id),
+  CONSTRAINT votes_candidate_id_fkey FOREIGN KEY (candidate_id) REFERENCES public.candidates (id) ON DELETE CASCADE,
+  CONSTRAINT votes_voter_id_fkey FOREIGN KEY (voter_id) REFERENCES public.voters (id) ON DELETE CASCADE
 ) TABLESPACE pg_default;
-```
 
-### Tabel `voting_schedule`
-```sql
-create table public.voting_schedule (
-  id uuid not null default extensions.uuid_generate_v4(),
-  start_time timestamp with time zone not null,
-  end_time timestamp with time zone not null,
-  is_active boolean not null default true,
-  created_at timestamp with time zone not null default timezone('utc'::text, now()),
-  constraint voting_schedule_pkey primary key (id)
-) tablespace pg_default;
 
--- Hanya satu jadwal yang bisa aktif
-create unique index if not exists voting_schedule_active_idx on public.voting_schedule (is_active) where (is_active = true);
-
--- RLS Policies untuk voting_schedule
-alter table public.voting_schedule enable row level security;
-
--- Policy untuk membaca jadwal (publik)
-create policy "Jadwal dapat dibaca oleh semua pengguna"
-on public.voting_schedule for select
-to public
-using (true);
-
--- Policy untuk menambah/mengubah jadwal (admin only)
-create policy "Hanya admin yang dapat mengatur jadwal"
-on public.voting_schedule for all
-to authenticated
-using (true)
-with check (true);
-```
-
-### Tabel `settings`
-```sql
-create table public.settings (
-  id uuid not null default extensions.uuid_generate_v4 (),
-  announcement_time timestamp with time zone null,
-  winner_id uuid null,
-  created_at timestamp with time zone null default timezone ('utc'::text, now()),
-  updated_at timestamp with time zone null default timezone ('utc'::text, now()),
-  constraint settings_pkey primary key (id),
-  constraint settings_winner_id_fkey foreign KEY (winner_id) references candidates (id) on delete set null
+-- Tabel Voting Schedule (Jadwal Buka & Tutup Bilik Suara)
+CREATE TABLE IF NOT EXISTS public.voting_schedule (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  start_time timestamp with time zone NOT NULL,
+  end_time timestamp with time zone NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT voting_schedule_pkey PRIMARY KEY (id)
 ) TABLESPACE pg_default;
-```
 
-### Storage Bucket
-> Copy dan paste ke supabase SQL Editor untuk membuat bucket penyimpanan foto
+CREATE UNIQUE INDEX IF NOT EXISTS voting_schedule_active_idx 
+ON public.voting_schedule (is_active) WHERE (is_active = true);
 
-```sql
--- Buat bucket untuk foto kandidat
-insert into storage.buckets (id, name, public) 
-values ('candidate-photos', 'candidate-photos', true);
 
--- Atur security policies untuk bucket candidate-photos
-create policy "Foto kandidat dapat diakses publik"
-on storage.objects for select
-using ( bucket_id = 'candidate-photos' );
+-- Tabel Settings (Pengaturan Waktu Pengumuman & Pemenang)
+CREATE TABLE IF NOT EXISTS public.settings (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  announcement_time timestamp with time zone NULL,
+  winner_id uuid NULL,
+  created_at timestamp with time zone NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT settings_pkey PRIMARY KEY (id),
+  CONSTRAINT settings_winner_id_fkey FOREIGN KEY (winner_id) REFERENCES public.candidates (id) ON DELETE SET NULL
+) TABLESPACE pg_default;
 
-create policy "Hanya admin yang dapat menambah foto kandidat"
-on storage.objects for insert
-with check (
+
+-- ==============================================================================
+-- 2. KONFIGURASI ROW LEVEL SECURITY (RLS) POLICIES
+-- ==============================================================================
+
+-- --- A. TABEL CANDIDATES ---
+ALTER TABLE public.candidates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Kandidat dapat dibaca oleh semua pengguna" ON public.candidates;
+DROP POLICY IF EXISTS "Hanya admin yang dapat mengelola kandidat" ON public.candidates;
+DROP POLICY IF EXISTS "Allow all candidates access" ON public.candidates;
+
+CREATE POLICY "Kandidat dapat dibaca oleh semua pengguna"
+ON public.candidates FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "Hanya admin yang dapat mengelola kandidat"
+ON public.candidates FOR ALL
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+
+-- --- B. TABEL VOTERS ---
+ALTER TABLE public.voters ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Publik dapat membaca data pemilih untuk login" ON public.voters;
+DROP POLICY IF EXISTS "Publik dapat memperbarui status voting sendiri" ON public.voters;
+DROP POLICY IF EXISTS "Admin dapat mengelola pemilih" ON public.voters;
+
+CREATE POLICY "Publik dapat membaca data pemilih untuk login"
+ON public.voters FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "Publik dapat memperbarui status voting sendiri"
+ON public.voters FOR UPDATE
+TO public
+USING (true)
+WITH CHECK (true);
+
+CREATE POLICY "Admin dapat mengelola pemilih"
+ON public.voters FOR ALL
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+
+-- --- C. TABEL VOTES ---
+ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Pemilih dapat mengirim suara" ON public.votes;
+DROP POLICY IF EXISTS "Votes dapat dibaca publik" ON public.votes;
+DROP POLICY IF EXISTS "Admin dapat mengelola semua votes" ON public.votes;
+
+CREATE POLICY "Pemilih dapat mengirim suara"
+ON public.votes FOR INSERT
+TO public
+WITH CHECK (true);
+
+CREATE POLICY "Votes dapat dibaca publik"
+ON public.votes FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "Admin dapat mengelola semua votes"
+ON public.votes FOR ALL
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+
+-- --- D. TABEL VOTING_SCHEDULE ---
+ALTER TABLE public.voting_schedule ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Jadwal dapat dibaca oleh semua pengguna" ON public.voting_schedule;
+DROP POLICY IF EXISTS "Hanya admin yang dapat mengatur jadwal" ON public.voting_schedule;
+
+CREATE POLICY "Jadwal dapat dibaca oleh semua pengguna"
+ON public.voting_schedule FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "Hanya admin yang dapat mengatur jadwal"
+ON public.voting_schedule FOR ALL
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+
+-- --- E. TABEL SETTINGS ---
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Settings dapat dibaca publik" ON public.settings;
+DROP POLICY IF EXISTS "Admin dapat mengelola settings" ON public.settings;
+
+CREATE POLICY "Settings dapat dibaca publik"
+ON public.settings FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "Admin dapat mengelola settings"
+ON public.settings FOR ALL
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+
+-- ==============================================================================
+-- 3. STORAGE BUCKET (PENYIMPANAN FOTO KANDIDAT)
+-- ==============================================================================
+
+-- Buat bucket penyimpanan foto kandidat
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('candidate-photos', 'candidate-photos', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Hapus policy storage lama jika ada
+DROP POLICY IF EXISTS "Foto kandidat dapat diakses publik" ON storage.objects;
+DROP POLICY IF EXISTS "Hanya admin yang dapat menambah foto kandidat" ON storage.objects;
+DROP POLICY IF EXISTS "Hanya admin yang dapat menghapus foto kandidat" ON storage.objects;
+
+-- Akses publik untuk melihat foto kandidat
+CREATE POLICY "Foto kandidat dapat diakses publik"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'candidate-photos');
+
+-- Hanya admin yang dapat mengunggah foto baru
+CREATE POLICY "Hanya admin yang dapat menambah foto kandidat"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
   bucket_id = 'candidate-photos' 
-  and auth.role() = 'authenticated'
+  AND auth.role() = 'authenticated'
 );
 
-create policy "Hanya admin yang dapat menghapus foto kandidat"
-on storage.objects for delete
-using (
-  bucket_id = 'candidate-photos'
-  and auth.role() = 'authenticated'
+-- Hanya admin yang dapat menghapus foto
+CREATE POLICY "Hanya admin yang dapat menghapus foto kandidat"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'candidate-photos' 
+  AND auth.role() = 'authenticated'
 );
 ```
-
-Konfigurasi bucket ini untuk:
-- Akses publik untuk melihat foto kandidat
-- Hanya admin yang dapat mengunggah foto baru
-- Hanya admin yang dapat menghapus foto
 
 ## 📝 Panduan Penggunaan
 

@@ -1,10 +1,38 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+  let res = NextResponse.next({
+    request: {
+      headers: req.headers,
+    },
+  })
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    ''
+
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() {
+        return req.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value))
+        res = NextResponse.next({
+          request: {
+            headers: req.headers,
+          },
+        })
+        cookiesToSet.forEach(({ name, value, options }) =>
+          res.cookies.set(name, value, options)
+        )
+      },
+    },
+  })
 
   try {
     // Cek session untuk admin
@@ -34,7 +62,7 @@ export async function middleware(req: NextRequest) {
         .from('voting_schedule')
         .select('*')
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
 
       const now = new Date()
       
