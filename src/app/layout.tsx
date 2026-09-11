@@ -25,6 +25,11 @@ export const metadata: Metadata = {
     locale: 'id_ID',
     type: 'website',
   },
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/logo.png',
+  },
   robots: {
     index: true,
     follow: true,

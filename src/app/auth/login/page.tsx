@@ -5,6 +5,7 @@ import { supabaseClient } from '@/lib/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import Image from 'next/image'
+import BrandLogo from '@/components/BrandLogo'
 
 export default function VoterLogin() {
   const [nis, setNis] = useState('')
@@ -60,22 +61,33 @@ export default function VoterLogin() {
           </div>
 
           {/* Logo and Title */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 flex flex-col items-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="mb-4"
+            >
+              <BrandLogo size="lg" variant="squircle" />
+            </motion.div>
             <motion.h1 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600"
+              className="text-4xl font-extrabold tracking-tight text-slate-900"
             >
-              PilihKu E-Voting
+              Pilih<span className="text-blue-600">Ku</span>{' '}
+              <span className="text-xs uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80 align-middle">
+                OSIS
+              </span>
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
-              className="mt-2 text-gray-600"
+              className="mt-2 text-sm text-slate-600 font-medium"
             >
-              Masuk untuk memberikan suara Anda
+              Masuk dengan NIS untuk menggunakan hak suaramu
             </motion.p>
           </div>
 

@@ -27,6 +27,7 @@ import {
 import { supabaseClient } from '@/lib/auth'
 import WinnerAnnouncement from '@/components/WinnerAnnouncement'
 import CandidateDetailModal from '@/app/components/CandidateDetailModal'
+import BrandLogo from '@/components/BrandLogo'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
 
@@ -258,23 +259,8 @@ export default function HomePage() {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Brand & Identity */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center shadow-xs group-hover:bg-blue-800 transition-colors shrink-0">
-              <Vote className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base tracking-tight text-slate-900">
-                  PilihKu
-                </span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100">
-                  OSIS
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium leading-none">
-                Sistem E-Voting Resmi
-              </p>
-            </div>
+          <Link href="/" className="flex items-center group">
+            <BrandLogo size="md" variant="squircle" showText showTagline />
           </Link>
 
           {/* Quick Navigation Links (Desktop) */}
@@ -316,108 +302,186 @@ export default function HomePage() {
       {/* Main Content */}
       <main>
         {/* Hero Section */}
-        <section className="relative overflow-hidden bg-white border-b border-slate-200/80 pt-12 pb-16 sm:pt-20 sm:pb-24">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-            {/* School Election Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-800 text-xs sm:text-sm font-semibold border border-slate-200/80 mb-6"
-            >
-              <School className="w-4 h-4 text-blue-600" />
-              <span>Pemilihan Ketua & Wakil Ketua OSIS • Periode {currentPeriod}</span>
-            </motion.div>
+        <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/40 via-white to-white border-b border-slate-200/80 pt-10 pb-16 sm:pt-16 sm:pb-20">
+          {/* Ambient background glow accents */}
+          <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-100/50 rounded-full blur-3xl pointer-events-none -z-10" />
+          <div className="absolute top-1/3 left-10 w-72 h-72 bg-indigo-50/60 rounded-full blur-3xl pointer-events-none -z-10" />
 
-            {/* Authoritative Headline */}
-            <motion.h1
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-3xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight"
-            >
-              Suara Berintegritas untuk Pemimpin Masa Depan Sekolah
-            </motion.h1>
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+              {/* Left Column: Copy & Primary Actions */}
+              <div className="lg:col-span-7 text-center lg:text-left">
+                {/* School Election Badge */}
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50/80 text-blue-900 text-xs sm:text-sm font-semibold border border-blue-200/60 mb-5"
+                >
+                  <School className="w-4 h-4 text-blue-600" />
+                  <span>Pemilihan Ketua & Wakil Ketua OSIS • Periode {currentPeriod}</span>
+                </motion.div>
 
-            {/* Subtitle */}
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="mt-5 text-base sm:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed"
-            >
-              Wujudkan demokrasi sekolah yang jujur, adil, dan transparan. Kenali visi misi setiap pasangan calon dan berikan suaramu secara sah melalui sistem digital.
-            </motion.p>
+                {/* Authoritative Headline */}
+                <motion.h1
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="text-3xl sm:text-5xl md:text-5xl lg:text-[3.25rem] font-black text-slate-900 tracking-tight leading-[1.15]"
+                >
+                  Suara Berintegritas untuk{' '}
+                  <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    Pemimpin Masa Depan
+                  </span>{' '}
+                  Sekolah
+                </motion.h1>
 
-            {/* Primary Action Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto"
-            >
-              <Link
-                href="/auth/login"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 text-base font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md transition-all duration-150"
+                {/* Subtitle */}
+                <motion.p
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="mt-5 text-base sm:text-lg text-slate-600 max-w-xl mx-auto lg:mx-0 leading-relaxed"
+                >
+                  Wujudkan demokrasi sekolah yang jujur, adil, dan transparan. Kenali visi misi setiap pasangan calon dan berikan suaramu secara sah melalui sistem digital.
+                </motion.p>
+
+                {/* Primary Action Buttons */}
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="mt-8 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4"
+                >
+                  <Link
+                    href="/auth/login"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 text-base font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md transition-all duration-150"
+                  >
+                    <Vote className="w-5 h-5" />
+                    <span>Mulai Memilih Sekarang</span>
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Link>
+                  <a
+                    href="#hasil-voting"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 text-base font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 transition-all duration-150 border border-slate-200/90 shadow-xs"
+                  >
+                    <BarChart3 className="w-5 h-5 text-slate-500" />
+                    <span>Lihat Hasil Voting</span>
+                  </a>
+                </motion.div>
+
+                {/* Quick Trust Highlights */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                  className="mt-8 pt-6 border-t border-slate-200/70 flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-6 text-xs font-semibold text-slate-600"
+                >
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>1 Siswa 1 Suara Sah</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-blue-600" />
+                    <span>Kerahasiaan Terenkripsi</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                    <span>Rekapitulasi Real-time</span>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Right Column: Hero 3D Artwork Showcase */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="lg:col-span-5 relative flex items-center justify-center mt-6 lg:mt-0"
               >
-                <Vote className="w-5 h-5" />
-                <span>Mulai Memilih Sekarang</span>
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Link>
-              <a
-                href="#hasil-voting"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 text-base font-semibold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 transition-all duration-150 border border-slate-200/80"
-              >
-                <BarChart3 className="w-5 h-5 text-slate-500" />
-                <span>Lihat Hasil Voting</span>
-              </a>
-            </motion.div>
+                {/* Glow Backdrop */}
+                <div className="absolute -inset-4 bg-gradient-to-tr from-blue-500/20 via-indigo-500/15 to-emerald-400/20 rounded-3xl blur-2xl -z-10" />
 
-            {/* Core Election Guarantees */}
+                {/* Main Image Container Card */}
+                <div className="relative w-full max-w-md lg:max-w-none rounded-3xl bg-white p-2.5 sm:p-3.5 shadow-xl border border-slate-200/90">
+                  <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100">
+                    <Image
+                      src="/images/hero-voting-illustration.jpg"
+                      alt="Ilustrasi Siswa Pemilihan E-Voting OSIS"
+                      fill
+                      priority
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 45vw, 500px"
+                      className="object-cover"
+                    />
+                  </div>
+
+                  {/* Floating Micro Badge - Top Right */}
+                  <div className="absolute -top-3 -right-2 sm:-right-4 bg-white/95 backdrop-blur-md px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl shadow-lg border border-slate-200/80 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-bold text-slate-800">
+                      100% Suara Sah Digital
+                    </span>
+                  </div>
+
+                  {/* Floating Micro Badge - Bottom Left */}
+                  <div className="absolute -bottom-3 -left-2 sm:-left-4 bg-slate-900/95 backdrop-blur-md text-white px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl shadow-lg border border-slate-800 flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-lg bg-blue-600 flex items-center justify-center">
+                      <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[11px] font-bold leading-tight">E-Voting OSIS</p>
+                      <p className="text-[9px] text-slate-400 leading-none">Aman & Terenkripsi</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Core Election Guarantees Grid (Bottom of Hero) */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-12 pt-8 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left max-w-3xl mx-auto"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.45 }}
+              className="mt-14 pt-8 border-t border-slate-200/70 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left"
             >
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50/70 border border-slate-100">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+              <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/60 shadow-2xs hover:bg-slate-50 transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
                   <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
                     1 Siswa 1 Suara
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Validasi ketat dengan NIS terdaftar, mencegah duplikasi pemilihan.
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Validasi ketat dengan NIS terdaftar, mencegah duplikasi dan kecurangan pemilihan.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50/70 border border-slate-100">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+              <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/60 shadow-2xs hover:bg-slate-50 transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
                   <Lock className="w-4 h-4" />
                 </div>
                 <div>
                   <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
                     Kerahasiaan Terjamin
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Pilihan suara dienkripsi tanpa keterkaitan identitas pemilih.
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Pilihan suara dienkripsi tanpa keterkaitan identitas siswa demi menjaga asas rahasia.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50/70 border border-slate-100">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+              <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/60 shadow-2xs hover:bg-slate-50 transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
                   <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
                     Perhitungan Akurat
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Hasil rekapitulasi otomatis dan transparan bagi seluruh sekolah.
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Hasil rekapitulasi terekam otomatis secara real-time dan transparan bagi seluruh sekolah.
                   </p>
                 </div>
               </div>
@@ -929,9 +993,7 @@ export default function HomePage() {
       <div className="sm:hidden fixed bottom-4 inset-x-4 z-30">
         <div className="bg-slate-900/95 backdrop-blur-md text-white p-3 rounded-2xl shadow-xl flex items-center justify-between border border-slate-800">
           <div className="flex items-center gap-2.5 pl-1">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
-              <Vote className="w-4 h-4" />
-            </div>
+            <BrandLogo size="sm" variant="squircle" />
             <div>
               <p className="text-xs font-bold leading-tight">Pemilihan OSIS</p>
               <p className="text-[10px] text-slate-400 leading-tight">Gunakan hak suaramu</p>
@@ -959,10 +1021,8 @@ export default function HomePage() {
       {/* Official Footer */}
       <footer className="bg-white border-t border-slate-200/80 py-10 pb-24 sm:pb-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-blue-700 text-white flex items-center justify-center shrink-0">
-              <Vote className="w-3.5 h-3.5" />
-            </div>
+          <div className="flex items-center gap-2.5">
+            <BrandLogo size="xs" variant="squircle" />
             <span>
               &copy; {currentYear} PilihKu E-Voting. Komisi Pemilihan OSIS Sekolah.
             </span>

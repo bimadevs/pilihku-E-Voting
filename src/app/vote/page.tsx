@@ -24,6 +24,7 @@ import {
   Users
 } from 'lucide-react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import BrandLogo from '@/components/BrandLogo'
 import toast from 'react-hot-toast'
 
 interface Candidate {
@@ -425,13 +426,11 @@ export default function VotePage() {
           {/* Top Row: Brand & Voter Info (Nama & Kelas Saja) */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-600/20 flex-shrink-0">
-                <Vote className="w-5 h-5" />
-              </div>
+              <BrandLogo size="sm" variant="squircle" />
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-slate-900 text-sm sm:text-base leading-tight">
-                    PilihKu
+                  <span className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
+                    Pilih<span className="text-blue-600">Ku</span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold tracking-wide border border-emerald-200/60">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />

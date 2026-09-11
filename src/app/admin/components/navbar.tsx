@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
 
 const navigation = [
   { name: 'Dashboard', href: '/admin' },
@@ -30,9 +31,9 @@ export function Navbar() {
           {/* Logo dan Desktop Navigation */}
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Pilihku
-              </h1>
+              <Link href="/admin" className="flex items-center">
+                <BrandLogo size="sm" variant="squircle" showText />
+              </Link>
             </div>
             {/* Desktop Navigation */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">

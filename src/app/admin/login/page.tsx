@@ -18,6 +18,7 @@ import {
   FileCheck2,
   LockKeyhole
 } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
 
 export default function AdminLogin() {
   const router = useRouter()
@@ -88,6 +89,21 @@ export default function AdminLogin() {
 
         {/* Center: Context & Civic Mandate */}
         <div className="relative z-10 py-10 lg:py-0 max-w-md">
+          <div className="flex items-center gap-3 mb-6">
+            <BrandLogo size="md" variant="squircle" />
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-lg tracking-tight text-white">
+                  Pilih<span className="text-blue-400">Ku</span>
+                </span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-blue-900/60 text-blue-300 border border-blue-700/60">
+                  Admin
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium">Panel Kendali Panitia OSIS</p>
+            </div>
+          </div>
+
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950/70 border border-indigo-800/60 text-indigo-300 text-xs font-medium mb-6">
             <ShieldCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
             <span>Pusat Kendali Pemilihan OSIS</span>
