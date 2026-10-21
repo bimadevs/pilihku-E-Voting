@@ -86,6 +86,35 @@ WITH CHECK (true);
 
 
 -- ------------------------------------------------------------------------------
+-- 3b. TABEL VOTED_DEVICES (1 Device 1 Vote)
+-- ------------------------------------------------------------------------------
+ALTER TABLE public.voted_devices ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Publik dapat membaca status perangkat" ON public.voted_devices;
+DROP POLICY IF EXISTS "Publik dapat mendaftarkan perangkat saat memilih" ON public.voted_devices;
+DROP POLICY IF EXISTS "Admin dapat mengelola semua status perangkat" ON public.voted_devices;
+
+-- Publik dapat membaca untuk cek apakah perangkat sudah pernah memilih
+CREATE POLICY "Publik dapat membaca status perangkat"
+ON public.voted_devices FOR SELECT
+TO public
+USING (true);
+
+-- Publik dapat mendaftarkan perangkat saat submit voting
+CREATE POLICY "Publik dapat mendaftarkan perangkat saat memilih"
+ON public.voted_devices FOR INSERT
+TO public
+WITH CHECK (true);
+
+-- Admin dapat mengelola / mereset kunci perangkat
+CREATE POLICY "Admin dapat mengelola semua status perangkat"
+ON public.voted_devices FOR ALL
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+
+-- ------------------------------------------------------------------------------
 -- 4. TABEL SETTINGS
 -- ------------------------------------------------------------------------------
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;

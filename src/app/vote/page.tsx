@@ -21,11 +21,13 @@ import {
   Lock,
   ChevronRight,
   Info,
-  Users
+  Users,
+  ShieldAlert
 } from 'lucide-react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import BrandLogo from '@/components/BrandLogo'
 import toast from 'react-hot-toast'
+import { checkDeviceVoted, registerDeviceVote } from '@/lib/deviceFingerprint'
 
 interface Candidate {
   id: string
@@ -156,6 +158,7 @@ export default function VotePage() {
   const router = useRouter()
   const [voter, setVoter] = useState<Voter | null>(null)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [isDeviceBlocked, setIsDeviceBlocked] = useState(false)
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -169,6 +172,16 @@ export default function VotePage() {
     let isMounted = true
 
     async function init() {
+      // 0. Cek Status Perangkat (1 Device 1 Vote)
+      try {
+        const { hasVoted } = await checkDeviceVoted()
+        if (hasVoted && isMounted) {
+          setIsDeviceBlocked(true)
+        }
+      } catch (err) {
+        console.error('Error saat memeriksa status perangkat:', err)
+      }
+
       // 1. Load Voter Data
       try {
         const voterCookie = document.cookie
@@ -279,7 +292,22 @@ export default function VotePage() {
     setError(null)
 
     try {
-      // 1. Simpan suara
+      // 0. Validasi proteksi 1 Device 1 Vote sebelum suara dicatat
+      const { hasVoted, deviceHash } = await checkDeviceVoted()
+      if (hasVoted) {
+        setIsDeviceBlocked(true)
+        throw new Error('Perangkat ini sudah digunakan untuk memilih sebelumnya.')
+      }
+
+      // 1. Catat perangkat ke tabel voted_devices
+      if (deviceHash) {
+        const regResult = await registerDeviceVote(deviceHash, voter.id)
+        if (!regResult.success) {
+          throw new Error(regResult.error || 'Gagal memverifikasi status unik perangkat.')
+        }
+      }
+
+      // 2. Simpan suara
       const { error: voteError } = await supabaseClient
         .from('votes')
         .insert([
@@ -291,7 +319,7 @@ export default function VotePage() {
 
       if (voteError) throw voteError
 
-      // 2. Perbarui status has_voted pemilih
+      // 3. Perbarui status has_voted pemilih
       const { error: updateError } = await supabaseClient
         .from('voters')
         .update({ has_voted: true })
@@ -302,7 +330,7 @@ export default function VotePage() {
       toast.success('Suara Anda berhasil dicatat!')
       setShowConfirmModal(false)
 
-      // 3. Arahkan ke halaman sukses
+      // 4. Arahkan ke halaman sukses
       router.push('/vote/success')
     } catch (err: unknown) {
       console.error('Error submitting vote:', err)
@@ -362,6 +390,47 @@ export default function VotePage() {
             <Link
               href="/"
               className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-sm transition-colors text-center"
+            >
+              Kembali ke Beranda
+            </Link>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // --- STATE 2b: PERANGKAT SUDAH PERNAH DIGUNAKAN UNTUK VOTING ---
+  if (isDeviceBlocked) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xl shadow-slate-200/50 text-center"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-600 border border-red-200/60 flex items-center justify-center mx-auto mb-5 shadow-sm">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <div className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-semibold mb-3">
+            Perangkat Terkunci
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+            Perangkat Sudah Digunakan
+          </h1>
+          <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+            Perangkat ini sudah tercatat pernah digunakan untuk mengirimkan suara pada pemilihan ini. 
+            Untuk menjamin keadilan pemilu, satu perangkat hanya diperbolehkan memberikan 1 kali suara.
+          </p>
+
+          <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-200/80 text-left text-xs text-amber-800">
+            <p className="font-semibold mb-1">Ada kendala khusus?</p>
+            <p>Jika HP Anda mengalami kerusakan atau Anda sedang meminjam perangkat keluarga, silakan hubungi <strong>Panitia Pemilihan OSIS</strong> untuk bantuan.</p>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3">
+            <Link
+              href="/"
+              className="w-full py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-sm transition-colors text-center"
             >
               Kembali ke Beranda
             </Link>

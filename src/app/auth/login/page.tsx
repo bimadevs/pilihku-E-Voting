@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabaseClient } from '@/lib/auth'
+import { checkDeviceVoted } from '@/lib/deviceFingerprint'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ShieldAlert } from 'lucide-react'
 import Image from 'next/image'
 import BrandLogo from '@/components/BrandLogo'
 
@@ -11,6 +12,36 @@ export default function VoterLogin() {
   const [nis, setNis] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isDeviceBlocked, setIsDeviceBlocked] = useState(false)
+  const [isCheckingDevice, setIsCheckingDevice] = useState(true)
+  const [deviceHash, setDeviceHash] = useState('')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function verifyDevice() {
+      try {
+        const { hasVoted, deviceHash: hash } = await checkDeviceVoted()
+        if (isMounted) {
+          setDeviceHash(hash)
+          if (hasVoted) {
+            setIsDeviceBlocked(true)
+            setError('Perangkat ini sudah pernah digunakan untuk voting. 1 perangkat hanya dapat memberikan 1 suara.')
+          }
+          setIsCheckingDevice(false)
+        }
+      } catch (err) {
+        console.error('Error saat verifikasi perangkat:', err)
+        if (isMounted) setIsCheckingDevice(false)
+      }
+    }
+
+    verifyDevice()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -18,6 +49,16 @@ export default function VoterLogin() {
     setError('')
 
     try {
+      // 1. Validasi Proteksi 1 Device 1 Vote
+      const { hasVoted, deviceHash: currentHash } = await checkDeviceVoted(deviceHash)
+      if (hasVoted) {
+        setIsDeviceBlocked(true)
+        setError('Perangkat ini sudah digunakan untuk melakukan voting. Satu perangkat hanya dapat digunakan untuk 1 kali suara.')
+        setLoading(false)
+        return
+      }
+
+      // 2. Validasi NIS Siswa
       const { data: voter, error } = await supabaseClient
         .from('voters')
         .select('*')
@@ -34,7 +75,11 @@ export default function VoterLogin() {
         return
       }
 
+      // Simpan device_hash di cookie/session bersama data voter jika diperlukan
       document.cookie = `voter=${JSON.stringify(voter)}; path=/`
+      if (currentHash) {
+        document.cookie = `pilihku_device=${currentHash}; path=/; max-age=86400`
+      }
       window.location.href = '/vote'
 
     } catch (error) {
@@ -103,7 +148,7 @@ export default function VoterLogin() {
             <div className="absolute -bottom-12 -left-12 w-24 h-24 bg-indigo-50 rounded-full" />
 
             <AnimatePresence mode="wait">
-              {error && (
+              {error && !isDeviceBlocked && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -120,54 +165,73 @@ export default function VoterLogin() {
               )}
             </AnimatePresence>
 
-            <form onSubmit={handleLogin} className="space-y-6 relative z-10">
-              <div>
-                <label htmlFor="nis" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nomor Induk Siswa (NIS)
-                </label>
-                <div className="relative">
-                  <input
-                    id="nis"
-                    type="text"
-                    value={nis}
-                    onChange={(e) => setNis(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                    placeholder="Masukkan NIS Anda"
-                    required
-                    autoComplete='off'
-                    disabled={loading}
-                  />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
+            {isDeviceBlocked ? (
+              <div className="py-2 text-center space-y-4 relative z-10">
+                <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                  <ShieldAlert className="w-9 h-9" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Perangkat Sudah Memilih</h3>
+                  <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                    Perangkat ini sudah tercatat telah memberikan suara pada pemilihan ini. 
+                    Demi menjaga integritas pemilihan, <span className="font-semibold text-slate-800">1 perangkat hanya dapat digunakan untuk 1 kali suara</span>.
+                  </p>
+                </div>
+                <div className="p-4 bg-amber-50 border border-amber-200/80 rounded-2xl text-left text-xs text-amber-800">
+                  <p className="font-semibold mb-1">Butuh bantuan?</p>
+                  <p>Jika ini adalah kekeliruan atau Anda meminjam HP karena HP rusak, silakan hubungi <strong>Panitia Pemilihan OSIS</strong> untuk bantuan pembukaan kunci.</p>
                 </div>
               </div>
-
-              <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-xl 
-                         hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 
-                         focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 
-                         disabled:opacity-50 disabled:cursor-not-allowed font-medium relative overflow-hidden"
-              >
-                <div className="relative z-10">
-                  {loading ? (
-                    <span className="flex items-center justify-center">
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Memproses...
-                    </span>
-                  ) : (
-                    'Masuk'
-                  )}
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-6 relative z-10">
+                <div>
+                  <label htmlFor="nis" className="block text-sm font-medium text-gray-700 mb-2">
+                    Nomor Induk Siswa (NIS)
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="nis"
+                      type="text"
+                      value={nis}
+                      onChange={(e) => setNis(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm"
+                      placeholder="Masukkan NIS Anda"
+                      required
+                      autoComplete='off'
+                      disabled={loading || isCheckingDevice}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 hover:opacity-100 transition-opacity duration-200" />
-              </motion.button>
-            </form>
+
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  type="submit"
+                  disabled={loading || isCheckingDevice}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-xl 
+                           hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 
+                           focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 
+                           disabled:opacity-50 disabled:cursor-not-allowed font-medium relative overflow-hidden"
+                >
+                  <div className="relative z-10">
+                    {loading || isCheckingDevice ? (
+                      <span className="flex items-center justify-center">
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        {isCheckingDevice ? 'Memeriksa Perangkat...' : 'Memproses...'}
+                      </span>
+                    ) : (
+                      'Masuk'
+                    )}
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 hover:opacity-100 transition-opacity duration-200" />
+                </motion.button>
+              </form>
+            )}
           </motion.div>
 
           {/* Footer Text */}

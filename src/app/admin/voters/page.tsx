@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabaseClient } from '@/lib/auth'
+import { resetDeviceLockByVoterId } from '@/lib/deviceFingerprint'
 import { toast } from 'react-hot-toast'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import { Spinner } from '@/app/admin/voters/components/spinner'
-import { CheckCircle, AlertCircle, XCircle } from 'lucide-react'
+import { CheckCircle, AlertCircle, XCircle, Unlock } from 'lucide-react'
 import { ConfirmationDialog } from './components/ConfirmationDialog'
 
 interface Voter {
@@ -57,6 +58,7 @@ const showNotification = (message: string, type: 'success' | 'error' | 'info' = 
 
 export default function VotersPage() {
   const [voters, setVoters] = useState<Voter[]>([])
+  const [lockedVoterIds, setLockedVoterIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -74,12 +76,21 @@ export default function VotersPage() {
   
   const ITEMS_PER_PAGE = 20
 
-  // 2. Tambahkan state untuk dialog
+  // State untuk dialog konfirmasi delete
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     type: 'single' as 'single' | 'multiple' | 'all',
     id: '',
     count: 0
+  })
+
+  // State untuk dialog konfirmasi reset perangkat
+  const [resetDeviceDialog, setResetDeviceDialog] = useState<{
+    isOpen: boolean
+    voter: Voter | null
+  }>({
+    isOpen: false,
+    voter: null
   })
 
   useEffect(() => {
@@ -205,9 +216,37 @@ export default function VotersPage() {
 
       if (error) throw error
       setVoters(data || [])
+
+      // Ambil daftar perangkat terkunci untuk pemilih
+      const { data: devicesData, error: devicesError } = await supabaseClient
+        .from('voted_devices')
+        .select('voter_id')
+
+      if (!devicesError && devicesData) {
+        setLockedVoterIds(new Set(devicesData.map((d: { voter_id: string }) => d.voter_id)))
+      }
     } catch (error) {
       console.error('Error:', error)
       toast.error('Gagal memuat data pemilih')
+    }
+  }
+
+  async function handleConfirmResetDevice() {
+    if (!resetDeviceDialog.voter) return
+    setLoading(true)
+
+    try {
+      const res = await resetDeviceLockByVoterId(resetDeviceDialog.voter.id)
+      if (!res.success) throw new Error(res.error)
+
+      showNotification(`Kunci perangkat untuk ${resetDeviceDialog.voter.full_name} berhasil direset. HP kini dapat dipakai siswa lain.`, 'success')
+      setResetDeviceDialog({ isOpen: false, voter: null })
+      await fetchVoters()
+    } catch (err: any) {
+      console.error('Error resetting device lock:', err)
+      showNotification(err?.message || 'Gagal mereset kunci perangkat', 'error')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -723,9 +762,9 @@ export default function VotersPage() {
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  {/* <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aksi
-                  </th> */}
+                  <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Kunci Perangkat
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -769,17 +808,26 @@ export default function VotersPage() {
                           {voter.has_voted ? 'Sudah Memilih' : 'Belum Memilih'}
                         </span>
                       </td>
-                      {/* <td 
-                        className="px-6 py-4 whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()} // Prevent row click when clicking delete
+                      <td 
+                        className="px-6 py-4 whitespace-nowrap text-center text-sm"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <button
-                          onClick={() => handleDelete(voter.id)}
-                          className="text-red-600 hover:text-red-900 transition-colors duration-200"
-                        >
-                          Hapus
-                        </button>
-                      </td> */}
+                        {lockedVoterIds.has(voter.id) ? (
+                          <button
+                            type="button"
+                            onClick={() => setResetDeviceDialog({ isOpen: true, voter })}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors shadow-sm"
+                            title="Buka kunci perangkat agar HP bisa digunakan oleh siswa lain"
+                          >
+                            <Unlock className="w-3.5 h-3.5" />
+                            <span>Reset Kunci HP</span>
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400 font-normal">
+                            -
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -856,6 +904,16 @@ export default function VotersPage() {
           }
           type={confirmDialog.type}
           count={confirmDialog.count}
+        />
+
+        {/* Dialog Konfirmasi Reset Kunci Perangkat */}
+        <ConfirmationDialog
+          isOpen={resetDeviceDialog.isOpen}
+          onClose={() => setResetDeviceDialog({ isOpen: false, voter: null })}
+          onConfirm={handleConfirmResetDevice}
+          title="Buka Kunci Perangkat"
+          message={`Buka kunci perangkat fisik untuk pemilih ${resetDeviceDialog.voter?.full_name || ''}? HP yang sebelumnya digunakan akan dapat dipakai kembali oleh siswa lain. Hak suara ${resetDeviceDialog.voter?.full_name || ''} tetap tercatat aman di sistem.`}
+          type="reset"
         />
       </div>
     </div>
