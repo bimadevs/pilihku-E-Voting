@@ -18,7 +18,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.43.0",
     "lucide-react": "^1.44.0",
-    "next": "^16.3.4",
+    "next": "^16.4.2",
     "papaparse": "^5.7.0",
     "react": "^19.3.0",
     "react-chartjs-2": "^5.3.1",
@@ -40,10 +40,14 @@
     "ai": "^7.0.0",
     "e2e": "^0.21.2",
     "eslint": "^9",
-    "eslint-config-next": "^16.3.4",
+    "eslint-config-next": "^16.4.2",
     "postcss": "^8.5.28",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "zod": "^4.1.8"
+  },
+  "overrides": {
+    "braces": "npm:@franciscosolis/braces@^3.1.1",
+    "postcss-selector-parser": "^7.1.7"
   }
 }
