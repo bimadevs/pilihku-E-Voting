@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://pilihku.bimadev.xyz'),
   title: "Pilihku - Suaramu Masa Depan Sekolah Kita",
-  description: "Pilihku adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OSIS di sekolah. Dibangun dengan Next.js 14, Supabase, dan Tailwind CSS.",
+  description: "Pilihku adalah aplikasi e-voting modern untuk pemilihan ketua dan wakil ketua OSIS di sekolah. Dibangun dengan Next.js, Supabase, dan Tailwind CSS.",
   keywords: 'e-voting, OSIS, pemilihan ketua OSIS, voting online sekolah, sistem pemilihan digital',
   openGraph: {
     title: 'PilihKu - Sistem E-Voting OSIS Modern',
@@ -55,7 +55,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="light">
+    <html lang="id" className="light">
       <head>
       </head>
       <body

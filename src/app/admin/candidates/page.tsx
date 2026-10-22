@@ -1,12 +1,30 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { supabaseClient } from '@/lib/auth'
-import { toast, Toaster } from 'react-hot-toast'
+import React, { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
-import { CheckCircle, AlertCircle, XCircle } from 'lucide-react'
+import { supabaseClient } from '@/lib/auth'
+import { showAdminToast } from '@/app/admin/components/AdminToast'
 import { ConfirmationDialog } from '../voters/components/ConfirmationDialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { 
+  Users, 
+  Plus, 
+  Trash2, 
+  Edit3, 
+  Eye, 
+  UploadCloud, 
+  Camera, 
+  CheckCircle2, 
+  AlertCircle, 
+  ChevronDown, 
+  ChevronUp, 
+  Award, 
+  FileText, 
+  Target, 
+  ListOrdered,
+  X,
+  Loader2
+} from 'lucide-react'
 
 interface Candidate {
   id: string
@@ -18,45 +36,19 @@ interface Candidate {
   visi: string
   misi: string
   program_kerja: string
-  ketua_photo_url?: string
-  wakil_photo_url?: string
-}
-
-// Custom Toast Component
-const CustomToast = ({ message, type }: { message: string, type: 'success' | 'error' | 'info' }) => {
-  const icons = {
-    success: <CheckCircle className="w-5 h-5 text-green-500" />,
-    error: <XCircle className="w-5 h-5 text-red-500" />,
-    info: <AlertCircle className="w-5 h-5 text-blue-500" />
-  }
-
-  const bgColors = {
-    success: 'bg-green-50 border-green-200',
-    error: 'bg-red-50 border-red-200',
-    info: 'bg-blue-50 border-blue-200'
-  }
-
-  return (
-    <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border ${bgColors[type]}`}>
-      {icons[type]}
-      <span className="text-gray-700">{message}</span>
-    </div>
-  )
-}
-
-// Fungsi helper untuk menampilkan toast
-const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-  toast.custom((t: { visible: boolean }) => (
-    <CustomToast message={message} type={type} />
-  ), {
-    duration: 3000,
-    position: 'top-center'
-  })
+  ketua_photo_url?: string | null
+  wakil_photo_url?: string | null
 }
 
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  // Modal form states
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false)
+  const [editingCandidateId, setEditingCandidateId] = useState<string | null>(null)
+
   const [formData, setFormData] = useState({
     candidate_number: '',
     ketua_name: '',
@@ -67,15 +59,29 @@ export default function CandidatesPage() {
     misi: '',
     program_kerja: '',
     ketua_photo: null as File | null,
-    wakil_photo: null as File | null
+    wakil_photo: null as File | null,
   })
+
+  // Preview URLs for selected files
+  const [ketuaPreview, setKetuaPreview] = useState<string | null>(null)
+  const [wakilPreview, setWakilPreview] = useState<string | null>(null)
+
+  // Detail Modal
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
-  const [confirmDialog, setConfirmDialog] = useState({
+
+  // Expandable accordions for candidate card details
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
+
+  // Delete Confirm Dialog
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    id: string
+    name: string
+  }>({
     isOpen: false,
-    type: 'single' as 'single' | 'multiple' | 'all',
     id: '',
-    count: 0
+    name: '',
   })
 
   useEffect(() => {
@@ -84,6 +90,7 @@ export default function CandidatesPage() {
 
   async function fetchCandidates() {
     try {
+      setLoading(true)
       const { data, error } = await supabaseClient
         .from('candidates')
         .select('*')
@@ -91,676 +98,832 @@ export default function CandidatesPage() {
 
       if (error) throw error
       setCandidates(data || [])
-    } catch (error) {
-      console.error('Error:', error)
-      toast.error('Gagal memuat data kandidat')
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-
-    try {
-      if (!formData.candidate_number || !formData.ketua_name || !formData.wakil_name || 
-          !formData.ketua_class || !formData.wakil_class ||
-          !formData.visi || !formData.misi || !formData.program_kerja) {
-        throw new Error('Semua field harus diisi')
-      }
-
-      // Pastikan sesi admin masih aktif
-      const { data: { session } } = await supabaseClient.auth.getSession()
-      if (!session) {
-        throw new Error('Sesi admin telah berakhir atau tidak valid. Silakan login kembali ke panel admin.')
-      }
-
-      let ketuaPhotoUrl = null
-      let wakilPhotoUrl = null
-
-      // Upload foto ketua
-      if (formData.ketua_photo) {
-        try {
-          const fileExt = formData.ketua_photo.name.split('.').pop()
-          const fileName = `ketua_${Date.now()}.${fileExt}`
-          
-          const { error: uploadError } = await supabaseClient
-            .storage
-            .from('candidate-photos')
-            .upload(`public/${fileName}`, formData.ketua_photo, {
-              cacheControl: '3600',
-              upsert: true
-            })
-
-          if (uploadError) throw uploadError
-
-          const { data } = supabaseClient
-            .storage
-            .from('candidate-photos')
-            .getPublicUrl(`public/${fileName}`)
-
-          ketuaPhotoUrl = data.publicUrl
-        } catch (error) {
-          showNotification('Gagal mengupload foto ketua', 'error')
-          throw new Error('Gagal mengupload foto ketua')
-        }
-      }
-
-      // Upload foto wakil
-      if (formData.wakil_photo) {
-        try {
-          const fileExt = formData.wakil_photo.name.split('.').pop()
-          const fileName = `wakil_${Date.now()}.${fileExt}`
-          
-          const { error: uploadError } = await supabaseClient
-            .storage
-            .from('candidate-photos')
-            .upload(`public/${fileName}`, formData.wakil_photo, {
-              cacheControl: '3600',
-              upsert: true
-            })
-
-          if (uploadError) throw uploadError
-
-          const { data } = supabaseClient
-            .storage
-            .from('candidate-photos')
-            .getPublicUrl(`public/${fileName}`)
-
-          wakilPhotoUrl = data.publicUrl
-        } catch (error) {
-          showNotification('Gagal mengupload foto wakil', 'error')
-          throw new Error('Gagal mengupload foto wakil')
-        }
-      }
-
-      // Simpan data kandidat
-      const { error: insertError } = await supabaseClient
-        .from('candidates')
-        .insert([{
-          candidate_number: parseInt(formData.candidate_number),
-          ketua_name: formData.ketua_name,
-          wakil_name: formData.wakil_name,
-          ketua_class: formData.ketua_class,
-          wakil_class: formData.wakil_class,
-          visi: formData.visi,
-          misi: formData.misi,
-          program_kerja: formData.program_kerja,
-          ketua_photo_url: ketuaPhotoUrl,
-          wakil_photo_url: wakilPhotoUrl
-        }])
-
-      if (insertError) {
-        // Hapus foto yang sudah terunggah jika penyimpanan data kandidat gagal
-        if (ketuaPhotoUrl) {
-          const path = ketuaPhotoUrl.split('candidate-photos/')[1]
-          if (path) await supabaseClient.storage.from('candidate-photos').remove([path])
-        }
-        if (wakilPhotoUrl) {
-          const path = wakilPhotoUrl.split('candidate-photos/')[1]
-          if (path) await supabaseClient.storage.from('candidate-photos').remove([path])
-        }
-        throw insertError
-      }
-
-      showNotification('Kandidat berhasil ditambahkan', 'success')
-      fetchCandidates()
-      setFormData({
-        candidate_number: '',
-        ketua_name: '',
-        wakil_name: '',
-        ketua_class: '',
-        wakil_class: '',
-        visi: '',
-        misi: '',
-        program_kerja: '',
-        ketua_photo: null,
-        wakil_photo: null
-      })
     } catch (error: any) {
-      console.error('Error:', error)
-      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
-        showNotification(
-          'Gagal (RLS): Tabel "candidates" belum memiliki policy INSERT untuk role admin di Supabase SQL Editor.',
-          'error'
-        )
-      } else if (error instanceof Error) {
-        showNotification(error.message, 'error')
-      } else if (error?.message) {
-        showNotification(error.message, 'error')
-      } else {
-        showNotification('Gagal menambahkan kandidat', 'error')
-      }
+      console.error('Error fetching candidates:', error)
+      showAdminToast('Gagal memuat kandidat', 'error', error?.message)
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleDelete(id: string) {
-    setConfirmDialog({
-      isOpen: true,
-      type: 'single',
-      id,
-      count: 1
+  function handleOpenAddModal() {
+    setEditingCandidateId(null)
+    setFormData({
+      candidate_number: String((candidates.length || 0) + 1),
+      ketua_name: '',
+      wakil_name: '',
+      ketua_class: '',
+      wakil_class: '',
+      visi: '',
+      misi: '',
+      program_kerja: '',
+      ketua_photo: null,
+      wakil_photo: null,
     })
+    setKetuaPreview(null)
+    setWakilPreview(null)
+    setIsFormModalOpen(true)
+  }
+
+  function handleOpenEditModal(candidate: Candidate) {
+    setEditingCandidateId(candidate.id)
+    setFormData({
+      candidate_number: String(candidate.candidate_number),
+      ketua_name: candidate.ketua_name,
+      wakil_name: candidate.wakil_name,
+      ketua_class: candidate.ketua_class,
+      wakil_class: candidate.wakil_class,
+      visi: candidate.visi,
+      misi: candidate.misi,
+      program_kerja: candidate.program_kerja,
+      ketua_photo: null,
+      wakil_photo: null,
+    })
+    setKetuaPreview(candidate.ketua_photo_url || null)
+    setWakilPreview(candidate.wakil_photo_url || null)
+    setIsFormModalOpen(true)
+  }
+
+  function handleKetuaPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showAdminToast('Ukuran foto terlalu besar', 'warning', 'Maksimal ukuran file foto adalah 5MB.')
+        return
+      }
+      setFormData((prev) => ({ ...prev, ketua_photo: file }))
+      setKetuaPreview(URL.createObjectURL(file))
+    }
+  }
+
+  function handleWakilPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showAdminToast('Ukuran foto terlalu besar', 'warning', 'Maksimal ukuran file foto adalah 5MB.')
+        return
+      }
+      setFormData((prev) => ({ ...prev, wakil_photo: file }))
+      setWakilPreview(URL.createObjectURL(file))
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+
+    try {
+      if (
+        !formData.candidate_number ||
+        !formData.ketua_name ||
+        !formData.wakil_name ||
+        !formData.ketua_class ||
+        !formData.wakil_class ||
+        !formData.visi ||
+        !formData.misi ||
+        !formData.program_kerja
+      ) {
+        throw new Error('Semua data pokok dan visi-misi pasangan calon wajib diisi')
+      }
+
+      const { data: { session } } = await supabaseClient.auth.getSession()
+      if (!session) {
+        throw new Error('Sesi admin berakhir. Silakan login kembali.')
+      }
+
+      let ketuaPhotoUrl = ketuaPreview
+      let wakilPhotoUrl = wakilPreview
+
+      // 1. Upload foto ketua jika ada file baru
+      if (formData.ketua_photo) {
+        const fileExt = formData.ketua_photo.name.split('.').pop()
+        const fileName = `ketua_${Date.now()}.${fileExt}`
+        const { error: uploadErr } = await supabaseClient.storage
+          .from('candidate-photos')
+          .upload(`public/${fileName}`, formData.ketua_photo, {
+            cacheControl: '3600',
+            upsert: true,
+          })
+        if (uploadErr) throw new Error('Gagal mengunggah foto ketua: ' + uploadErr.message)
+
+        const { data } = supabaseClient.storage
+          .from('candidate-photos')
+          .getPublicUrl(`public/${fileName}`)
+        ketuaPhotoUrl = data.publicUrl
+      }
+
+      // 2. Upload foto wakil jika ada file baru
+      if (formData.wakil_photo) {
+        const fileExt = formData.wakil_photo.name.split('.').pop()
+        const fileName = `wakil_${Date.now()}.${fileExt}`
+        const { error: uploadErr } = await supabaseClient.storage
+          .from('candidate-photos')
+          .upload(`public/${fileName}`, formData.wakil_photo, {
+            cacheControl: '3600',
+            upsert: true,
+          })
+        if (uploadErr) throw new Error('Gagal mengunggah foto wakil: ' + uploadErr.message)
+
+        const { data } = supabaseClient.storage
+          .from('candidate-photos')
+          .getPublicUrl(`public/${fileName}`)
+        wakilPhotoUrl = data.publicUrl
+      }
+
+      if (editingCandidateId) {
+        // Mode Update
+        const { error: updateError } = await supabaseClient
+          .from('candidates')
+          .update({
+            candidate_number: parseInt(formData.candidate_number),
+            ketua_name: formData.ketua_name.trim(),
+            wakil_name: formData.wakil_name.trim(),
+            ketua_class: formData.ketua_class.trim(),
+            wakil_class: formData.wakil_class.trim(),
+            visi: formData.visi.trim(),
+            misi: formData.misi.trim(),
+            program_kerja: formData.program_kerja.trim(),
+            ketua_photo_url: ketuaPhotoUrl,
+            wakil_photo_url: wakilPhotoUrl,
+          })
+          .eq('id', editingCandidateId)
+
+        if (updateError) throw updateError
+        showAdminToast('Paslon Diperbarui', 'success', `Data Paslon #${formData.candidate_number} berhasil disimpan.`)
+      } else {
+        // Mode Insert
+        const { error: insertError } = await supabaseClient
+          .from('candidates')
+          .insert([
+            {
+              candidate_number: parseInt(formData.candidate_number),
+              ketua_name: formData.ketua_name.trim(),
+              wakil_name: formData.wakil_name.trim(),
+              ketua_class: formData.ketua_class.trim(),
+              wakil_class: formData.wakil_class.trim(),
+              visi: formData.visi.trim(),
+              misi: formData.misi.trim(),
+              program_kerja: formData.program_kerja.trim(),
+              ketua_photo_url: ketuaPhotoUrl,
+              wakil_photo_url: wakilPhotoUrl,
+            },
+          ])
+
+        if (insertError) {
+          // Rollback foto jika gagal
+          if (formData.ketua_photo && ketuaPhotoUrl) {
+            const p = ketuaPhotoUrl.split('candidate-photos/')[1]
+            if (p) await supabaseClient.storage.from('candidate-photos').remove([p])
+          }
+          if (formData.wakil_photo && wakilPhotoUrl) {
+            const p = wakilPhotoUrl.split('candidate-photos/')[1]
+            if (p) await supabaseClient.storage.from('candidate-photos').remove([p])
+          }
+          throw insertError
+        }
+        showAdminToast('Paslon Ditambahkan', 'success', `Paslon #${formData.candidate_number} berhasil didaftarkan.`)
+      }
+
+      setIsFormModalOpen(false)
+      fetchCandidates()
+    } catch (err: any) {
+      console.error('Error submitting candidate:', err)
+      showAdminToast('Gagal Menyimpan', 'error', err?.message || 'Terjadi kesalahan sistem')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleConfirmDelete() {
     if (!confirmDialog.id) return
-    
+
     try {
-      // 1. Dapatkan data kandidat untuk mendapatkan path foto
-      const { data: candidate, error: fetchError } = await supabaseClient
+      // 1. Fetch candidate to get photo urls
+      const { data: cand } = await supabaseClient
         .from('candidates')
-        .select('*')
+        .select('ketua_photo_url, wakil_photo_url')
         .eq('id', confirmDialog.id)
         .single()
 
-      if (fetchError) {
-        throw new Error('Gagal mengambil data kandidat')
+      // 2. Remove photos from bucket
+      if (cand?.ketua_photo_url) {
+        const p = cand.ketua_photo_url.split('candidate-photos/')[1]
+        if (p) await supabaseClient.storage.from('candidate-photos').remove([p])
+      }
+      if (cand?.wakil_photo_url) {
+        const p = cand.wakil_photo_url.split('candidate-photos/')[1]
+        if (p) await supabaseClient.storage.from('candidate-photos').remove([p])
       }
 
-      // 2. Hapus foto ketua dari storage jika ada
-      if (candidate?.ketua_photo_url) {
-        const ketuaPhotoPath = candidate.ketua_photo_url
-          .split('candidate-photos/')[1] // Ambil path setelah 'candidate-photos/'
+      // 3. Delete votes first
+      await supabaseClient.from('votes').delete().eq('candidate_id', confirmDialog.id)
 
-        const { error: ketuaDeleteError } = await supabaseClient
-          .storage
-          .from('candidate-photos')
-          .remove([ketuaPhotoPath])
-        
-        if (ketuaDeleteError) {
-          console.error('Error deleting ketua photo:', ketuaDeleteError)
-          throw new Error('Gagal menghapus foto ketua')
-        }
-      }
-
-      // 3. Hapus foto wakil dari storage jika ada
-      if (candidate?.wakil_photo_url) {
-        const wakilPhotoPath = candidate.wakil_photo_url
-          .split('candidate-photos/')[1] // Ambil path setelah 'candidate-photos/'
-
-        const { error: wakilDeleteError } = await supabaseClient
-          .storage
-          .from('candidate-photos')
-          .remove([wakilPhotoPath])
-        
-        if (wakilDeleteError) {
-          console.error('Error deleting wakil photo:', wakilDeleteError)
-          throw new Error('Gagal menghapus foto wakil')
-        }
-      }
-
-      // 4. Hapus votes terkait
-      const { error: votesError } = await supabaseClient
-        .from('votes')
-        .delete()
-        .eq('candidate_id', confirmDialog.id)
-
-      if (votesError) {
-        throw new Error('Gagal menghapus data voting')
-      }
-
-      // 5. Hapus kandidat
-      const { error: deleteError } = await supabaseClient
+      // 4. Delete candidate
+      const { error: delErr } = await supabaseClient
         .from('candidates')
         .delete()
         .eq('id', confirmDialog.id)
 
-      if (deleteError) {
-        throw new Error('Gagal menghapus data kandidat')
-      }
+      if (delErr) throw delErr
 
-      showNotification('Kandidat berhasil dihapus', 'success')
+      showAdminToast('Paslon Dihapus', 'success', `Kandidat ${confirmDialog.name} berhasil dihapus permanen.`)
       fetchCandidates()
-    } catch (error: any) {
-      console.error('Error:', error)
-      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
-        showNotification(
-          'Gagal (RLS): Belum ada policy DELETE untuk admin pada tabel candidates/votes di Supabase.',
-          'error'
-        )
-      } else {
-        showNotification(
-          error instanceof Error ? error.message : error?.message || 'Gagal menghapus kandidat', 
-          'error'
-        )
-      }
+    } catch (err: any) {
+      console.error('Delete error:', err)
+      showAdminToast('Gagal Menghapus', 'error', err?.message || 'Tidak dapat menghapus paslon.')
+    } finally {
+      setConfirmDialog({ isOpen: false, id: '', name: '' })
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-      </div>
-    )
+  const toggleExpand = (id: string) => {
+    setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 sm:py-12">
-      <Toaster position="top-center" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        {/* Header */}
-        <h1 className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-6 sm:mb-12">
-          Kelola Data Kandidat
-        </h1>
-
-        {/* Form Tambah Kandidat */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-8 mb-6">
-          <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800">
-            Tambah Kandidat Baru
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Grid untuk input fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Nomor Urut */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nomor Urut
-                </label>
-                <input
-                  type="number"
-                  name="candidate_number"
-                  value={formData.candidate_number}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    candidate_number: e.target.value
-                  }))}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  min="1"
-                />
-              </div>
-
-              {/* Spacer untuk alignment */}
-              <div className="hidden md:block"></div>
-
-              {/* Ketua Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-800">Data Calon Ketua</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nama Lengkap
-                  </label>
-                  <input
-                    type="text"
-                    name="ketua_name"
-                    value={formData.ketua_name}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      ketua_name: e.target.value
-                    }))}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
-                    autoComplete="off"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Kelas
-                  </label>
-                  <input
-                    type="text"
-                    name="ketua_class"
-                    value={formData.ketua_class}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      ketua_class: e.target.value
-                    }))}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
-                    autoComplete="off"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Foto
-                  </label>
-                  <input
-                    type="file"
-                    name="ketua_photo"
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      ketua_photo: e.target.files ? e.target.files[0] : null
-                    }))}
-                    accept="image/*"
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 
-                             file:rounded-xl file:border-0 file:text-sm file:font-semibold
-                             file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    autoComplete="off"
-                 />
-                </div>
-              </div>
-
-              {/* Wakil Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-800">Data Calon Wakil</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nama Lengkap
-                  </label>
-                  <input
-                    type="text"
-                    name="wakil_name"
-                    value={formData.wakil_name}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      wakil_name: e.target.value
-                    }))}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
-                    autoComplete="off"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Kelas
-                  </label>
-                  <input
-                    type="text"
-                    name="wakil_class"
-                    value={formData.wakil_class}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      wakil_class: e.target.value
-                    }))}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
-                    autoComplete="off"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Foto
-                  </label>
-                  <input
-                    type="file"
-                    name="wakil_photo"
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      wakil_photo: e.target.files ? e.target.files[0] : null
-                    }))}
-                    accept="image/*"
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 
-                             file:rounded-xl file:border-0 file:text-sm file:font-semibold
-                             file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Visi, Misi, Program Kerja */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Visi
-                </label>
-                <textarea
-                  name="visi"
-                  value={formData.visi}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    visi: e.target.value
-                  }))}
-                  rows={3}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Misi
-                </label>
-                <textarea
-                  name="misi"
-                  value={formData.misi}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    misi: e.target.value
-                  }))}
-                  rows={3}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Program Kerja
-                </label>
-                <textarea
-                  name="program_kerja"
-                  value={formData.program_kerja}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    program_kerja: e.target.value
-                  }))}
-                  rows={3}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500"
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 
-                         transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed
-                         w-full sm:w-auto"
-              >
-                {loading ? 'Menyimpan...' : 'Simpan Kandidat'}
-              </button>
-            </div>
-          </form>
+    <div className="space-y-8">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Manajemen Pasangan Calon
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
+              {candidates.length} Paslon Terdaftar
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            Daftarkan nomor urut, foto resmi, visi, misi, dan program kerja unggulan calon Ketua & Wakil OSIS.
+          </p>
         </div>
 
-        {/* Daftar Kandidat */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    No. Urut
-                  </th>
-                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Foto
-                  </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ketua
-                  </th>
-                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Kelas
-                  </th>
-                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Foto
-                  </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Wakil
-                  </th>
-                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Kelas
-                  </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {candidates.map((candidate) => (
-                  <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-blue-100 text-blue-800">
-                        {candidate.candidate_number}
-                      </span>
-                    </td>
-                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
-                      {candidate.ketua_photo_url && (
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full overflow-hidden">
+        <button
+          type="button"
+          onClick={handleOpenAddModal}
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-colors self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Tambah Paslon Baru</span>
+        </button>
+      </div>
+
+      {/* Main Roster Grid */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <p className="text-sm text-slate-500 font-medium">Memuat data kandidat...</p>
+        </div>
+      ) : candidates.length === 0 ? (
+        <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center max-w-xl mx-auto space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+            <Users className="w-7 h-7" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-slate-900">Belum Ada Paslon Terdaftar</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Mulai masukkan data pasangan calon Ketua & Wakil OSIS beserta visi misi untuk ditampilkan di bilik suara pemilih.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenAddModal}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Paslon Pertama</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {candidates.map((candidate) => {
+            const isExpanded = !!expandedCards[candidate.id]
+
+            return (
+              <div
+                key={candidate.id}
+                className="bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:border-slate-300 hover:shadow-md transition-all flex flex-col overflow-hidden"
+              >
+                {/* Card Top: Number & Actions */}
+                <div className="p-5 pb-4 flex items-center justify-between border-b border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 h-8 rounded-lg bg-blue-600 text-white font-extrabold text-sm flex items-center justify-center shadow-xs">
+                      #{candidate.candidate_number}
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                      Paslon 0{candidate.candidate_number}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCandidate(candidate)
+                        setIsDetailModalOpen(true)
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Lihat Detail Lengkap"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditModal(candidate)}
+                      className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                      title="Edit Paslon"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfirmDialog({
+                          isOpen: true,
+                          id: candidate.id,
+                          name: `Paslon #${candidate.candidate_number} (${candidate.ketua_name} & ${candidate.wakil_name})`,
+                        })
+                      }
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      title="Hapus Paslon"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Candidate Photos & Names */}
+                <div className="p-5 space-y-4 flex-1">
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Ketua */}
+                    <div className="flex flex-col items-center text-center p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-slate-200 border-2 border-white shadow-xs relative mb-2">
+                        {candidate.ketua_photo_url ? (
                           <Image
                             src={candidate.ketua_photo_url}
-                            alt={`Foto Ketua ${candidate.ketua_name}`}
-                            width={48}
-                            height={48}
-                            className="h-full w-full object-cover"
-                            priority
+                            alt={candidate.ketua_name}
+                            fill
+                            sizes="96px"
+                            className="object-cover"
                           />
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {candidate.ketua_name}
-                    </td>
-                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {candidate.ketua_class}
-                    </td>
-                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
-                      {candidate.wakil_photo_url && (
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full overflow-hidden">
-                          <Image
-                            src={candidate.wakil_photo_url}
-                            alt={`Foto Wakil ${candidate.wakil_name}`}
-                            width={48}
-                            height={48}
-                            className="h-full w-full object-cover"
-                            priority
-                          />
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {candidate.wakil_name}
-                    </td>
-                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {candidate.wakil_class}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedCandidate(candidate)
-                            setIsDetailModalOpen(true)
-                          }}
-                          className="text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg bg-blue-50 text-blue-700 
-                                   hover:bg-blue-100 transition-colors duration-200"
-                        >
-                          Detail
-                        </button>
-                        <button
-                          onClick={() => handleDelete(candidate.id)}
-                          className="text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg bg-red-50 text-red-700 
-                                   hover:bg-red-100 transition-colors duration-200"
-                        >
-                          Hapus
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Modal Detail Kandidat */}
-        <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-          <DialogContent className="max-w-3xl bg-white mx-4 sm:mx-auto max-h-[90vh] overflow-y-auto">
-            {selectedCandidate && (
-              <>
-                <DialogHeader className="sticky top-0 bg-white z-10 pb-4 border-b">
-                  <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900">
-                    Detail Paslon Nomor {selectedCandidate.candidate_number}
-                  </DialogTitle>
-                </DialogHeader>
-                
-                <div className="py-6 space-y-8">
-                  {/* Info Paslon */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Ketua */}
-                    <div className="bg-gray-50 p-4 rounded-xl">
-                      <div className="flex flex-col items-center text-center">
-                        {selectedCandidate.ketua_photo_url && (
-                          <div className="mb-4 h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden border-4 border-white shadow-lg">
-                            <Image
-                              src={selectedCandidate.ketua_photo_url}
-                              alt={`Foto Ketua ${selectedCandidate.ketua_name}`}
-                              width={160}
-                              height={160}
-                              className="h-full w-full object-cover"
-                              priority
-                            />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold text-lg">
+                            {candidate.ketua_name.charAt(0) || 'K'}
                           </div>
                         )}
-                        <div>
-                          <h3 className="font-bold text-xl text-gray-900 mb-1">Calon Ketua</h3>
-                          <p className="text-lg text-gray-700 font-medium">{selectedCandidate.ketua_name}</p>
-                          <p className="text-gray-500">{selectedCandidate.ketua_class}</p>
-                        </div>
                       </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mb-1">
+                        Calon Ketua
+                      </span>
+                      <p className="text-xs font-bold text-slate-900 leading-tight line-clamp-1" title={candidate.ketua_name}>
+                        {candidate.ketua_name}
+                      </p>
+                      <span className="text-[11px] text-slate-500 font-mono mt-0.5">{candidate.ketua_class}</span>
                     </div>
 
                     {/* Wakil */}
-                    <div className="bg-gray-50 p-4 rounded-xl">
-                      <div className="flex flex-col items-center text-center">
-                        {selectedCandidate.wakil_photo_url && (
-                          <div className="mb-4 h-32 w-32 sm:h-40 sm:w-40 rounded-full overflow-hidden border-4 border-white shadow-lg">
-                            <Image
-                              src={selectedCandidate.wakil_photo_url}
-                              alt={`Foto Wakil ${selectedCandidate.wakil_name}`}
-                              width={160}
-                              height={160}
-                              className="h-full w-full object-cover"
-                              priority
-                            />
+                    <div className="flex flex-col items-center text-center p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-slate-200 border-2 border-white shadow-xs relative mb-2">
+                        {candidate.wakil_photo_url ? (
+                          <Image
+                            src={candidate.wakil_photo_url}
+                            alt={candidate.wakil_name}
+                            fill
+                            sizes="96px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold text-lg">
+                            {candidate.wakil_name.charAt(0) || 'W'}
                           </div>
                         )}
-                        <div>
-                          <h3 className="font-bold text-xl text-gray-900 mb-1">Calon Wakil</h3>
-                          <p className="text-lg text-gray-700 font-medium">{selectedCandidate.wakil_name}</p>
-                          <p className="text-gray-500">{selectedCandidate.wakil_class}</p>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full mb-1">
+                        Calon Wakil
+                      </span>
+                      <p className="text-xs font-bold text-slate-900 leading-tight line-clamp-1" title={candidate.wakil_name}>
+                        {candidate.wakil_name}
+                      </p>
+                      <span className="text-[11px] text-slate-500 font-mono mt-0.5">{candidate.wakil_class}</span>
+                    </div>
+                  </div>
+
+                  {/* Visi preview */}
+                  <div className="p-3.5 rounded-xl bg-blue-50/40 border border-blue-100/60">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900 mb-1">
+                      <Target className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Visi Utama</span>
+                    </div>
+                    <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed italic">
+                      &ldquo;{candidate.visi}&rdquo;
+                    </p>
+                  </div>
+
+                  {/* Expandable Misi & Program Kerja */}
+                  {isExpanded && (
+                    <div className="space-y-3 pt-2 border-t border-slate-100 text-xs">
+                      <div>
+                        <div className="flex items-center gap-1.5 font-bold text-emerald-800 mb-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Misi</span>
                         </div>
+                        <p className="text-slate-600 whitespace-pre-line bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 leading-relaxed font-sans">
+                          {candidate.misi}
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-1.5 font-bold text-purple-800 mb-1">
+                          <ListOrdered className="w-3.5 h-3.5 text-purple-600" />
+                          <span>Program Kerja Unggulan</span>
+                        </div>
+                        <p className="text-slate-600 whitespace-pre-line bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 leading-relaxed font-sans">
+                          {candidate.program_kerja}
+                        </p>
                       </div>
                     </div>
+                  )}
+                </div>
+
+                {/* Card Bottom: Toggle Accordion */}
+                <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between text-xs font-medium text-slate-500">
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand(candidate.id)}
+                    className="inline-flex items-center gap-1 hover:text-blue-600 transition-colors"
+                  >
+                    <span>{isExpanded ? 'Tutup Misi & Proker' : 'Lihat Misi & Proker'}</span>
+                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditModal(candidate)}
+                    className="text-blue-600 hover:text-blue-700 font-semibold"
+                  >
+                    Edit Data
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Modal: Tambah / Edit Paslon */}
+      <Dialog open={isFormModalOpen} onOpenChange={setIsFormModalOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto bg-white border border-slate-200 shadow-2xl rounded-2xl p-6 sm:p-8">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-slate-900">
+              {editingCandidateId ? 'Edit Data Paslon' : 'Tambah Pasangan Calon Baru'}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-1">
+              Lengkapi formulir pendaftaran pasangan calon Ketua & Wakil OSIS dengan teliti.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+            {/* Step 1: Nomor Urut & Informasi Calon */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1.5">
+                1. Data Pokok Pasangan Calon
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Nomor Urut <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={formData.candidate_number}
+                    onChange={(e) => setFormData({ ...formData, candidate_number: e.target.value })}
+                    className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    placeholder="1"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <span className="text-xs text-slate-400 block pt-7">
+                    Nomor urut menentukan urutan paslon pada surat suara digital.
+                  </span>
+                </div>
+              </div>
+
+              {/* Data Ketua & Wakil */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Ketua */}
+                <div className="p-4 rounded-xl bg-blue-50/40 border border-blue-100 space-y-3">
+                  <span className="text-xs font-bold text-blue-900 block">Calon Ketua OSIS</span>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Nama Lengkap</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.ketua_name}
+                      onChange={(e) => setFormData({ ...formData, ketua_name: e.target.value })}
+                      placeholder="Contoh: Muhammad Rayhan"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500"
+                    />
                   </div>
-
-                  {/* Visi, Misi, Program Kerja */}
-                  <div className="space-y-6">
-                    <div className="bg-blue-50 p-6 rounded-xl">
-                      <h3 className="font-bold text-xl text-blue-900 mb-3">Visi</h3>
-                      <p className="text-gray-700 whitespace-pre-line text-base leading-relaxed">
-                        {selectedCandidate.visi}
-                      </p>
-                    </div>
-
-                    <div className="bg-green-50 p-6 rounded-xl">
-                      <h3 className="font-bold text-xl text-green-900 mb-3">Misi</h3>
-                      <p className="text-gray-700 whitespace-pre-line text-base leading-relaxed">
-                        {selectedCandidate.misi}
-                      </p>
-                    </div>
-
-                    <div className="bg-purple-50 p-6 rounded-xl">
-                      <h3 className="font-bold text-xl text-purple-900 mb-3">Program Kerja</h3>
-                      <p className="text-gray-700 whitespace-pre-line text-base leading-relaxed">
-                        {selectedCandidate.program_kerja}
-                      </p>
-                    </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Kelas</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.ketua_class}
+                      onChange={(e) => setFormData({ ...formData, ketua_class: e.target.value })}
+                      placeholder="Contoh: XI MIPA 1"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500"
+                    />
                   </div>
                 </div>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
 
-        <ConfirmationDialog
-          isOpen={confirmDialog.isOpen}
-          onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
-          onConfirm={handleConfirmDelete}
-          title="Hapus Data Kandidat"
-          message="Anda yakin ingin menghapus data kandidat ini? Semua data terkait termasuk foto dan data voting akan ikut terhapus."
-          type="single"
-          count={1}
-        />
-      </div>
+                {/* Wakil */}
+                <div className="p-4 rounded-xl bg-indigo-50/40 border border-indigo-100 space-y-3">
+                  <span className="text-xs font-bold text-indigo-900 block">Calon Wakil Ketua OSIS</span>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Nama Lengkap</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.wakil_name}
+                      onChange={(e) => setFormData({ ...formData, wakil_name: e.target.value })}
+                      placeholder="Contoh: Annisa Putri"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Kelas</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.wakil_class}
+                      onChange={(e) => setFormData({ ...formData, wakil_class: e.target.value })}
+                      placeholder="Contoh: X AKL 2"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Upload Foto Paslon */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1.5">
+                2. Foto Resmi Paslon (Maksimal 5MB, format PNG/JPG)
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Foto Ketua */}
+                <div className="border border-slate-200 rounded-xl p-4 flex flex-col items-center text-center space-y-3 bg-slate-50/40">
+                  <span className="text-xs font-bold text-slate-700">Foto Calon Ketua</span>
+                  <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-200 border-2 border-slate-300 relative">
+                    {ketuaPreview ? (
+                      <Image src={ketuaPreview} alt="Preview Ketua" fill sizes="96px" className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                    )}
+                  </div>
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors">
+                    <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Pilih Foto Ketua</span>
+                    <input type="file" accept="image/*" onChange={handleKetuaPhotoChange} className="hidden" />
+                  </label>
+                </div>
+
+                {/* Foto Wakil */}
+                <div className="border border-slate-200 rounded-xl p-4 flex flex-col items-center text-center space-y-3 bg-slate-50/40">
+                  <span className="text-xs font-bold text-slate-700">Foto Calon Wakil</span>
+                  <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-200 border-2 border-slate-300 relative">
+                    {wakilPreview ? (
+                      <Image src={wakilPreview} alt="Preview Wakil" fill sizes="96px" className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                    )}
+                  </div>
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors">
+                    <UploadCloud className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Pilih Foto Wakil</span>
+                    <input type="file" accept="image/*" onChange={handleWakilPhotoChange} className="hidden" />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Visi, Misi & Proker */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1.5">
+                3. Visi, Misi & Program Kerja Unggulan
+              </h4>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Visi Pasangan Calon <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  value={formData.visi}
+                  onChange={(e) => setFormData({ ...formData, visi: e.target.value })}
+                  placeholder="Tuliskan visi besar pasangan calon untuk OSIS..."
+                  className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Misi <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">Gunakan baris baru (Enter) per butir misi</span>
+                </div>
+                <textarea
+                  required
+                  rows={3}
+                  value={formData.misi}
+                  onChange={(e) => setFormData({ ...formData, misi: e.target.value })}
+                  placeholder="1. Meningkatkan partisipasi aktif siswa&#10;2. Menumbuhkan transparansi aspirasi&#10;3. Kolaborasi lintas ekstrakurikuler"
+                  className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-sans"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Program Kerja Unggulan <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">Gunakan baris baru (Enter) per program</span>
+                </div>
+                <textarea
+                  required
+                  rows={3}
+                  value={formData.program_kerja}
+                  onChange={(e) => setFormData({ ...formData, program_kerja: e.target.value })}
+                  placeholder="• Pekan Seni & Olahraga Digital&#10;• Kotak Aspirasi Online Terbuka&#10;• Bank Daur Ulang Siswa"
+                  className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-sans"
+                />
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsFormModalOpen(false)}
+                disabled={saving}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menyimpan Paslon...</span>
+                  </>
+                ) : (
+                  <span>{editingCandidateId ? 'Simpan Perubahan' : 'Daftarkan Paslon'}</span>
+                )}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Detail Lengkap Paslon */}
+      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto bg-white border border-slate-200 shadow-2xl rounded-2xl p-6 sm:p-8">
+          {selectedCandidate && (
+            <div className="space-y-6">
+              <DialogHeader>
+                <div className="flex items-center gap-2.5 mb-1">
+                  <span className="w-7 h-7 rounded-lg bg-blue-600 text-white font-extrabold text-xs flex items-center justify-center">
+                    #{selectedCandidate.candidate_number}
+                  </span>
+                  <DialogTitle className="text-xl font-bold text-slate-900">
+                    Pasangan Calon Nomor Urut {selectedCandidate.candidate_number}
+                  </DialogTitle>
+                </div>
+                <DialogDescription className="text-xs text-slate-500">
+                  Profil resmi dan rancangan program kepengurusan OSIS.
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* Photos & Bios */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col items-center text-center p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-slate-200 relative mb-3 border-2 border-white shadow-xs">
+                    {selectedCandidate.ketua_photo_url ? (
+                      <Image
+                        src={selectedCandidate.ketua_photo_url}
+                        alt={selectedCandidate.ketua_name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center font-bold text-slate-400">
+                        {selectedCandidate.ketua_name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mb-1">
+                    Calon Ketua
+                  </span>
+                  <h4 className="text-sm font-bold text-slate-900">{selectedCandidate.ketua_name}</h4>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">{selectedCandidate.ketua_class}</p>
+                </div>
+
+                <div className="flex flex-col items-center text-center p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-slate-200 relative mb-3 border-2 border-white shadow-xs">
+                    {selectedCandidate.wakil_photo_url ? (
+                      <Image
+                        src={selectedCandidate.wakil_photo_url}
+                        alt={selectedCandidate.wakil_name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center font-bold text-slate-400">
+                        {selectedCandidate.wakil_name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full mb-1">
+                    Calon Wakil
+                  </span>
+                  <h4 className="text-sm font-bold text-slate-900">{selectedCandidate.wakil_name}</h4>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">{selectedCandidate.wakil_class}</p>
+                </div>
+              </div>
+
+              {/* Visi */}
+              <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-100 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900">
+                  <Target className="w-4 h-4 text-blue-600" />
+                  <span>Visi Kepemimpinan</span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-800 italic leading-relaxed whitespace-pre-line">
+                  &ldquo;{selectedCandidate.visi}&rdquo;
+                </p>
+              </div>
+
+              {/* Misi */}
+              <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-100 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Misi Strategis</span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-line">
+                  {selectedCandidate.misi}
+                </p>
+              </div>
+
+              {/* Program Kerja */}
+              <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900">
+                  <ListOrdered className="w-4 h-4 text-purple-600" />
+                  <span>Program Kerja Unggulan</span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-line">
+                  {selectedCandidate.program_kerja}
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDetailModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  Tutup Pratinjau
+                </button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog for Delete */}
+      <ConfirmationDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ isOpen: false, id: '', name: '' })}
+        onConfirm={handleConfirmDelete}
+        title="Hapus Data Paslon"
+        message={`Apakah Anda yakin ingin menghapus data ${confirmDialog.name}? Semua data suara pemilih dan foto kandidat terkait akan dihapus secara permanen.`}
+        type="single"
+        count={1}
+      />
     </div>
   )
 }

@@ -961,6 +961,7 @@ export default function VotePage() {
                             src={selectedCandidate.ketua_photo_url}
                             alt={selectedCandidate.ketua_name}
                             fill
+                            sizes="80px"
                             className="object-cover"
                           />
                         ) : (
@@ -988,6 +989,7 @@ export default function VotePage() {
                             src={selectedCandidate.wakil_photo_url}
                             alt={selectedCandidate.wakil_name}
                             fill
+                            sizes="80px"
                             className="object-cover"
                           />
                         ) : (

@@ -19,8 +19,14 @@ const eslintConfig = defineConfig([
     'out/**',
     'build/**',
     'next-env.d.ts',
+    '.agent/**',
+    '.agents/**',
+    '.claude/**',
+    '.cursor/**',
+    '.dsh/**',
+    '.e2e/**',
+    '.taste-skill/**',
   ]),
 ])
 
 export default eslintConfig
-

@@ -1,238 +1,607 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { supabaseClient } from '@/lib/auth'
+import React, { useEffect, useState } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { supabaseClient } from '@/lib/auth'
+import { 
+  Users, 
+  Vote, 
+  Clock, 
+  Award, 
+  TrendingUp, 
+  ShieldCheck, 
+  ArrowRight, 
+  CalendarClock, 
+  UserCheck, 
+  Trophy, 
+  BarChart3, 
+  RefreshCw, 
+  ExternalLink,
+  Smartphone,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react'
 
 interface DashboardStats {
   totalVoters: number
   votedCount: number
-  totalCandidates: number
+  notVotedCount: number
   votingPercentage: number
+  totalCandidates: number
+  lockedDevicesCount: number
 }
 
-export default function AdminDashboard() {
+interface CandidateStanding {
+  id: string
+  candidate_number: number
+  ketua_name: string
+  wakil_name: string
+  ketua_photo_url?: string
+  wakil_photo_url?: string
+  votes: number
+  percentage: number
+}
+
+interface ActiveSchedule {
+  id: string
+  start_time: string
+  end_time: string
+  is_active: boolean
+}
+
+export default function AdminDashboardPage() {
   const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [stats, setStats] = useState<DashboardStats>({
     totalVoters: 0,
     votedCount: 0,
+    notVotedCount: 0,
+    votingPercentage: 0,
     totalCandidates: 0,
-    votingPercentage: 0
+    lockedDevicesCount: 0,
   })
-  const [loading, setLoading] = useState(true)
+  const [standings, setStandings] = useState<CandidateStanding[]>([])
+  const [schedule, setSchedule] = useState<ActiveSchedule | null>(null)
+  const [timeRemaining, setTimeRemaining] = useState<string>('')
+  const [scheduleStatus, setScheduleStatus] = useState<'live' | 'upcoming' | 'closed' | 'none'>('none')
 
-  useEffect(() => {
-    fetchDashboardStats()
-  }, [])
-
-  async function fetchDashboardStats() {
+  async function fetchDashboardData(isManual = false) {
+    if (isManual) setRefreshing(true)
     try {
-      // Mengambil total pemilih
+      // 1. Total voters
       const { count: totalVoters } = await supabaseClient
         .from('voters')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
 
-      // Mengambil jumlah yang sudah memilih
+      // 2. Voted voters
       const { count: votedCount } = await supabaseClient
         .from('voters')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
         .eq('has_voted', true)
 
-      // Mengambil total kandidat
-      const { count: totalCandidates } = await supabaseClient
+      // 3. Candidates
+      const { data: candidatesData } = await supabaseClient
         .from('candidates')
-        .select('*', { count: 'exact' })
-      // Menghitung persentase
-      const percentage = totalVoters ? ((votedCount ?? 0) / totalVoters) * 100 : 0
+        .select('*')
+        .order('candidate_number')
+
+      // 4. Raw votes count
+      const { data: votesData } = await supabaseClient
+        .from('votes')
+        .select('candidate_id')
+
+      // 5. Active schedule
+      const { data: scheduleData } = await supabaseClient
+        .from('voting_schedule')
+        .select('*')
+        .eq('is_active', true)
+        .maybeSingle()
+
+      // 6. Device locks
+      const { count: lockedDevices } = await supabaseClient
+        .from('voted_devices')
+        .select('*', { count: 'exact', head: true })
+
+      const totalV = totalVoters ?? 0
+      const votedV = votedCount ?? 0
+      const notVotedV = Math.max(0, totalV - votedV)
+      const percentage = totalV > 0 ? Number(((votedV / totalV) * 100).toFixed(1)) : 0
 
       setStats({
-        totalVoters: totalVoters ?? 0,
-        votedCount: votedCount ?? 0,
-        totalCandidates: totalCandidates || 0,
-        votingPercentage: Number(percentage.toFixed(2))
+        totalVoters: totalV,
+        votedCount: votedV,
+        notVotedCount: notVotedV,
+        votingPercentage: percentage,
+        totalCandidates: candidatesData?.length || 0,
+        lockedDevicesCount: lockedDevices ?? 0,
       })
+
+      // Hitung perolehan suara paslon
+      const voteTally: Record<string, number> = {}
+      votesData?.forEach((v) => {
+        voteTally[v.candidate_id] = (voteTally[v.candidate_id] || 0) + 1
+      })
+
+      const totalCastVotes = votesData?.length || 0
+      const calculatedStandings: CandidateStanding[] = (candidatesData || []).map((c) => {
+        const count = voteTally[c.id] || 0
+        const pct = totalCastVotes > 0 ? Number(((count / totalCastVotes) * 100).toFixed(1)) : 0
+        return {
+          id: c.id,
+          candidate_number: c.candidate_number,
+          ketua_name: c.ketua_name,
+          wakil_name: c.wakil_name,
+          ketua_photo_url: c.ketua_photo_url,
+          wakil_photo_url: c.wakil_photo_url,
+          votes: count,
+          percentage: pct,
+        }
+      })
+
+      calculatedStandings.sort((a, b) => b.votes - a.votes)
+      setStandings(calculatedStandings)
+      setSchedule(scheduleData || null)
+
+      // Evaluasi status jadwal
+      if (!scheduleData) {
+        setScheduleStatus('none')
+      } else {
+        const now = Date.now()
+        const start = new Date(scheduleData.start_time).getTime()
+        const end = new Date(scheduleData.end_time).getTime()
+
+        if (now < start) {
+          setScheduleStatus('upcoming')
+        } else if (now >= start && now <= end) {
+          setScheduleStatus('live')
+        } else {
+          setScheduleStatus('closed')
+        }
+      }
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      console.error('Error fetching dashboard data:', error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
-  async function handleLogout() {
-    try {
-      await supabaseClient.auth.signOut()
-      router.push('/')
-    } catch (error) {
-      console.error('Error logging out:', error)
+  useEffect(() => {
+    fetchDashboardData()
+    // Poll data setiap 25 detik
+    const interval = setInterval(() => {
+      fetchDashboardData()
+    }, 25000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Timer countdown
+  useEffect(() => {
+    if (!schedule) return
+
+    function tick() {
+      const now = Date.now()
+      const start = new Date(schedule!.start_time).getTime()
+      const end = new Date(schedule!.end_time).getTime()
+
+      let target = 0
+      if (now < start) {
+        target = start - now
+      } else if (now >= start && now <= end) {
+        target = end - now
+      } else {
+        setTimeRemaining('Waktu Habis')
+        return
+      }
+
+      const hours = Math.floor(target / (1000 * 60 * 60))
+      const minutes = Math.floor((target % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((target % (1000 * 60)) / 1000)
+
+      setTimeRemaining(`${hours}j ${minutes}m ${seconds}d`)
     }
-  }
+
+    tick()
+    const timer = setInterval(tick, 1000)
+    return () => clearInterval(timer)
+  }, [schedule])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-medium text-slate-500">Menghubungkan ke Ruang Kontrol...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12">
-      <div className="max-w-7xl mx-auto px-6">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-12">
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            Dashboard Admin
-          </h1>
+    <div className="space-y-8">
+      {/* Top Welcome & Control Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-slate-200/80">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Pusat Kendali Pemilihan
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
+              Live OSIS
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            Pantau arus suara masuk, kehadiran siswa, dan integritas pemungutan suara secara real-time.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
           <button
-            onClick={handleLogout}
-            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl 
-            hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+            type="button"
+            onClick={() => fetchDashboardData(true)}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl shadow-xs transition-colors disabled:opacity-60"
           >
-            <svg
-              className="w-5 h-5 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+            <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>{refreshing ? 'Memperbarui...' : 'Segarkan Data'}</span>
+          </button>
+
+          <Link
+            href="/admin/results"
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-colors"
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>Ruang Rekapitulasi</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Hero Status Banner: Election Window & Quorum */}
+      {scheduleStatus === 'live' ? (
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 border border-blue-900/50 text-white p-6 sm:p-7 shadow-xl shadow-slate-900/10 relative overflow-hidden">
+          {/* Subtle grid pattern */}
+          <div 
+            className="absolute inset-0 opacity-[0.04] pointer-events-none" 
+            style={{ 
+              backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+              backgroundSize: '20px 20px' 
+            }} 
+          />
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                </span>
+                <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
+                  Pemungutan Suara Sedang Berlangsung
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+                Bilik Suara Digital Terbuka untuk Seluruh Siswa
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
+                Siswa dapat login dengan NIS di bilik suara portal resmi. Waktu penutupan tersisa{' '}
+                <span className="font-mono font-bold text-amber-300">{timeRemaining}</span> sebelum sistem ditutup otomatis.
+              </p>
+            </div>
+
+            <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-4 sm:p-5 min-w-[260px] flex flex-col justify-center">
+              <div className="flex justify-between items-baseline mb-2">
+                <span className="text-xs font-medium text-slate-400">Partisipasi Saat Ini</span>
+                <span className="text-2xl font-extrabold text-emerald-400">{stats.votingPercentage}%</span>
+              </div>
+              {/* Progress bar */}
+              <div className="w-full h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-emerald-400 rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(100, stats.votingPercentage)}%` }}
+                />
+              </div>
+              <div className="flex justify-between items-center text-[11px] text-slate-400 mt-2 font-mono">
+                <span>{stats.votedCount} Suara Masuk</span>
+                <span>Target: {stats.totalVoters} DPT</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : scheduleStatus === 'upcoming' ? (
+        <div className="rounded-2xl bg-amber-950/40 border border-amber-600/40 text-amber-100 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Clock className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-400">Jadwal Pemilihan Terdaftar</p>
+              <h3 className="text-base font-bold text-white mt-0.5">Pemungutan Suara Belum Dimulai</h3>
+              <p className="text-xs text-amber-200/80 mt-1">
+                Bilik suara akan dibuka otomatis dalam <span className="font-mono font-bold text-white">{timeRemaining}</span>.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/schedule"
+            className="px-4 py-2 text-xs font-semibold text-amber-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors self-start sm:self-auto"
+          >
+            Ubah Jadwal
+          </Link>
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <CalendarClock className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Status Pemilihan</p>
+              <h3 className="text-base font-bold text-white mt-0.5">Tidak Ada Jadwal Pemilihan yang Sedang Aktif</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Bilik suara pemilih saat ini ditutup. Buka menu jadwal untuk mengaktifkan sesi pemilihan.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/schedule"
+            className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors self-start sm:self-auto shadow-sm"
+          >
+            Atur Jadwal Sekarang
+          </Link>
+        </div>
+      )}
+
+      {/* 4 Executive KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* Card 1: Total DPT */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Total DPT Terdaftar
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
+              {stats.totalVoters.toLocaleString('id-ID')}
+            </span>
+            <p className="text-xs text-slate-500 mt-1">Siswa berhak memberikan suara</p>
+          </div>
+        </div>
+
+        {/* Card 2: Suara Masuk */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
+              Suara Masuk
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+              <Vote className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-emerald-600 font-mono tracking-tight">
+                {stats.votedCount.toLocaleString('id-ID')}
+              </span>
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                {stats.votingPercentage}%
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Siswa telah mencoblos</p>
+          </div>
+        </div>
+
+        {/* Card 3: Belum Memilih */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-amber-600">
+              Belum Memilih
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+              <Clock className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
+              {stats.notVotedCount.toLocaleString('id-ID')}
+            </span>
+            <p className="text-xs text-slate-500 mt-1">Menunggu kehadiran di TPS digital</p>
+          </div>
+        </div>
+
+        {/* Card 4: Paslon Terdaftar */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+              Kandidat Paslon
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+              <Award className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
+              {stats.totalCandidates}
+            </span>
+            <p className="text-xs text-slate-500 mt-1">Pasangan calon Ketua & Wakil</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Grid: Standings & Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column (7 cols): Live Candidate Standings */}
+        <div className="lg:col-span-7 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Perolehan Suara Kandidat Terkini
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Peringkat real-time berdasarkan suara sah yang masuk ke sistem
+              </p>
+            </div>
+            <Link
+              href="/admin/results"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 group"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-            Logout
-          </button>
-        </div>
-
-        {/* Statistik */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          {/* Total Pemilih */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-100 rounded-xl">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-gray-600">Total Pemilih</h3>
-                <p className="text-4xl font-bold text-blue-600 mt-2">{stats.totalVoters}</p>
-              </div>
-            </div>
+              <span>Detail Lengkap</span>
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           </div>
 
-          {/* Sudah Memilih */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-green-100 rounded-xl">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+          <div className="mt-5 space-y-4">
+            {standings.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-sm">
+                Belum ada kandidat paslon yang terdaftar di database.
               </div>
-              <div>
-                <h3 className="text-lg font-medium text-gray-600">Sudah Memilih</h3>
-                <p className="text-4xl font-bold text-green-600 mt-2">{stats.votedCount}</p>
-                <p className="text-sm font-medium text-green-500 mt-1">
-                  {stats.votingPercentage}% partisipasi
-                </p>
-              </div>
-            </div>
-          </div>
+            ) : (
+              standings.map((c, index) => {
+                const isLeading = index === 0 && c.votes > 0
+                return (
+                  <div
+                    key={c.id}
+                    className={`p-4 rounded-xl border transition-all ${
+                      isLeading
+                        ? 'bg-blue-50/50 border-blue-200/80 shadow-xs'
+                        : 'bg-slate-50/60 border-slate-200/60 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Number badge */}
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center font-extrabold text-xs flex-shrink-0 ${
+                            isLeading
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          #{c.candidate_number}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-900 truncate">
+                            {c.ketua_name} & {c.wakil_name}
+                          </p>
+                          {isLeading && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700">
+                              <Trophy className="w-3 h-3 text-amber-500" />
+                              Memimpin Perolehan Suara
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-          {/* Total Kandidat */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-purple-100 rounded-xl">
-                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-gray-600">Total Kandidat</h3>
-                <p className="text-4xl font-bold text-purple-600 mt-2">{stats.totalCandidates}</p>
-              </div>
-            </div>
-          </div>
+                      {/* Vote Count & Percentage */}
+                      <div className="text-right flex-shrink-0">
+                        <span className="text-base font-extrabold text-slate-900 font-mono">
+                          {c.votes.toLocaleString('id-ID')}
+                        </span>
+                        <span className="text-xs text-slate-500 ml-1">suara</span>
+                        <div className="text-xs font-bold text-blue-600">{c.percentage}%</div>
+                      </div>
+                    </div>
 
-          {/* Persentase Partisipasi */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-orange-100 rounded-xl">
-                <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-gray-600">Persentase Partisipasi</h3>
-                <p className="text-4xl font-bold text-orange-600 mt-2">{stats.votingPercentage}%</p>
-              </div>
-            </div>
+                    {/* Progress Bar */}
+                    <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isLeading ? 'bg-blue-600' : 'bg-slate-400'
+                        }`}
+                        style={{ width: `${Math.max(2, c.percentage)}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })
+            )}
           </div>
         </div>
 
-        {/* Menu Cepat */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <button
-            onClick={() => router.push('/admin/candidates')}
-            className="group p-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg 
-            hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200"
-          >
-            <div className="flex flex-col items-center text-white">
-              <svg className="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <h3 className="text-xl font-semibold">Kelola Kandidat</h3>
-              <p className="mt-2 text-blue-100">Tambah atau edit data kandidat</p>
-            </div>
-          </button>
+        {/* Right Column (5 cols): Quick Actions & Security */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* Action Hub */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs">
+            <h3 className="text-base font-bold text-slate-900 pb-3 border-b border-slate-100">
+              Pintasan Aksi Panitia
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+              <Link
+                href="/admin/candidates"
+                className="p-3.5 rounded-xl border border-slate-200/80 hover:border-blue-400 hover:bg-blue-50/40 transition-all flex flex-col group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-2.5">
+                  <Users className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600">
+                  Kelola Paslon
+                </span>
+                <span className="text-[11px] text-slate-500 mt-0.5">Tambah / edit profil & visi misi</span>
+              </Link>
 
-          <button
-            onClick={() => router.push('/admin/voters')}
-            className="group p-8 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg 
-            hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all duration-200"
-          >
-            <div className="flex flex-col items-center text-white">
-              <svg className="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              <h3 className="text-xl font-semibold">Kelola Pemilih</h3>
-              <p className="mt-2 text-green-100">Atur data pemilih</p>
-            </div>
-          </button>
+              <Link
+                href="/admin/voters"
+                className="p-3.5 rounded-xl border border-slate-200/80 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all flex flex-col group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mb-2.5">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-900 group-hover:text-emerald-600">
+                  Kelola DPT
+                </span>
+                <span className="text-[11px] text-slate-500 mt-0.5">Import Excel & reset kunci HP</span>
+              </Link>
 
-          <button
-            onClick={() => router.push('/admin/results')}
-            className="group p-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg 
-            hover:from-purple-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-200"
-          >
-            <div className="flex flex-col items-center text-white">
-              <svg className="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <h3 className="text-xl font-semibold">Lihat Hasil</h3>
-              <p className="mt-2 text-purple-100">Pantau hasil pemilihan</p>
-            </div>
-          </button>
+              <Link
+                href="/admin/schedule"
+                className="p-3.5 rounded-xl border border-slate-200/80 hover:border-amber-400 hover:bg-amber-50/40 transition-all flex flex-col group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center mb-2.5">
+                  <CalendarClock className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-900 group-hover:text-amber-600">
+                  Atur Jadwal
+                </span>
+                <span className="text-[11px] text-slate-500 mt-0.5">Buka / tutup jendela pemilihan</span>
+              </Link>
 
-
-          <button
-            onClick={() => router.push('/admin/settings')}
-            className="group p-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg 
-            hover:from-orange-600 hover:to-orange-700 transform hover:scale-105 transition-all duration-200"
-          >
-            <div className="flex flex-col items-center text-white">
-              <svg className="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <h3 className="text-xl font-semibold">Pengaturan</h3>
-              <p className="mt-2 text-orange-100">atur waktu pengumuman</p>
+              <Link
+                href="/admin/settings"
+                className="p-3.5 rounded-xl border border-slate-200/80 hover:border-indigo-400 hover:bg-indigo-50/40 transition-all flex flex-col group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mb-2.5">
+                  <Trophy className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+                  Pengumuman
+                </span>
+                <span className="text-[11px] text-slate-500 mt-0.5">Atur countdown & pemenang</span>
+              </Link>
             </div>
-          </button>
+          </div>
+
+          {/* Device Security & Anti-Fraud Card */}
+          <div className="bg-slate-900 text-slate-200 border border-slate-800 rounded-2xl p-5 shadow-xs">
+            <div className="flex items-center gap-2.5 mb-3">
+              <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                Integritas & Anti-Kecurangan
+              </h4>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed mb-4">
+              Sistem mencatat sidik jari digital perangkat untuk mencegah satu perangkat (smartphone/laptop) digunakan oleh lebih dari satu siswa.
+            </p>
+            <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-blue-400" />
+                <span className="text-xs font-medium text-slate-300">Perangkat Terkunci</span>
+              </div>
+              <span className="text-sm font-bold text-white font-mono">
+                {stats.lockedDevicesCount} Unit
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   )
-} 
+}

@@ -41,6 +41,123 @@ export default function WinnerAnnouncement({ announcementTime, winnerId }: Winne
   const [winner, setWinner] = useState<WinnerInfo | null>(null)
   const [isAnnouncementActive, setIsAnnouncementActive] = useState(true)
 
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    try {
+      sessionStorage.setItem('pilihku_winner_dismissed', 'true')
+    } catch {}
+  }
+
+  async function checkAnnouncementStatus() {
+    try {
+      const { data: candidates, error: candidatesError } = await supabaseClient
+        .from('candidates')
+        .select('id')
+        .limit(1)
+
+      if (candidatesError) throw candidatesError
+
+      const { data: allSettings, error: settingsError } = await supabaseClient
+        .from('settings')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (settingsError) throw settingsError
+
+      if (!candidates?.length || !allSettings?.length || !allSettings[0].announcement_time) {
+        setIsAnnouncementActive(false)
+        setShowWinner(false)
+        return
+      }
+
+      setIsAnnouncementActive(true)
+    } catch (error) {
+      console.error('Error checking announcement status:', error)
+      setIsAnnouncementActive(false)
+    }
+  }
+
+  async function fetchWinner() {
+    try {
+      // 1. Dapatkan setting terbaru
+      const { data: allSettings } = await supabaseClient
+        .from('settings')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      let targetWinnerId = winnerId || allSettings?.[0]?.winner_id
+
+      // 2. Ambil data semua suara untuk hitung statistik dan auto-winner secara murni dari perolehan suara terbanyak
+      const { data: votesData } = await supabaseClient
+        .from('votes')
+        .select('candidate_id')
+
+      const totalVotes = votesData?.length || 0
+      const voteCounts: Record<string, number> = {}
+      votesData?.forEach(v => {
+        if (v.candidate_id) {
+          voteCounts[v.candidate_id] = (voteCounts[v.candidate_id] || 0) + 1
+        }
+      })
+
+      // Tentukan pemenang otomatis 100% dari suara terbanyak demi asas demokrasi
+      const sortedCandidateIds = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])
+      if (sortedCandidateIds.length > 0) {
+        targetWinnerId = sortedCandidateIds[0][0]
+      }
+
+      // 3. Ambil data kandidat pemenang
+      let winningCandidate: any = null
+      if (targetWinnerId) {
+        const { data: candidateData } = await supabaseClient
+          .from('candidates')
+          .select('*')
+          .eq('id', targetWinnerId)
+          .single()
+        winningCandidate = candidateData
+      }
+
+      // Fallback ke kandidat pertama jika belum ada data vote sama sekali
+      if (!winningCandidate) {
+        const { data: firstCandidate } = await supabaseClient
+          .from('candidates')
+          .select('*')
+          .order('candidate_number')
+          .limit(1)
+          .single()
+        winningCandidate = firstCandidate
+      }
+
+      if (winningCandidate) {
+        const candidateVotes = voteCounts[winningCandidate.id] || 0
+        const percentage = totalVotes > 0 ? Number(((candidateVotes / totalVotes) * 100).toFixed(1)) : 0
+
+        setWinner({
+          ...winningCandidate,
+          voteCount: candidateVotes,
+          percentage,
+          totalVotes
+        })
+        setShowWinner(true)
+        try {
+          const dismissed = sessionStorage.getItem('pilihku_winner_dismissed')
+          if (!dismissed) {
+            setIsModalOpen(true)
+          }
+        } catch {
+          setIsModalOpen(true)
+        }
+      } else {
+        setIsAnnouncementActive(false)
+      }
+    } catch (error) {
+      console.error('Error fetching winner:', error)
+      setIsAnnouncementActive(false)
+    }
+  }
+
   useEffect(() => {
     if (!announcementTime) {
       setIsAnnouncementActive(false)
@@ -97,111 +214,6 @@ export default function WinnerAnnouncement({ announcementTime, winnerId }: Winne
 
     return () => clearInterval(timer)
   }, [announcementTime, winnerId])
-
-  async function checkAnnouncementStatus() {
-    try {
-      const { data: candidates, error: candidatesError } = await supabaseClient
-        .from('candidates')
-        .select('id')
-        .limit(1)
-
-      if (candidatesError) throw candidatesError
-
-      const { data: allSettings, error: settingsError } = await supabaseClient
-        .from('settings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      if (settingsError) throw settingsError
-
-      if (!candidates?.length || !allSettings?.length || !allSettings[0].announcement_time) {
-        setIsAnnouncementActive(false)
-        setShowWinner(false)
-        return
-      }
-
-      setIsAnnouncementActive(true)
-    } catch (error) {
-      console.error('Error checking announcement status:', error)
-      setIsAnnouncementActive(false)
-    }
-  }
-
-  async function fetchWinner() {
-    try {
-      // 1. Dapatkan setting terbaru
-      const { data: allSettings } = await supabaseClient
-        .from('settings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      let targetWinnerId = winnerId || allSettings?.[0]?.winner_id
-
-      // 2. Ambil data semua suara untuk hitung statistik dan auto-winner jika belum diset
-      const { data: votesData } = await supabaseClient
-        .from('votes')
-        .select('candidate_id')
-
-      const totalVotes = votesData?.length || 0
-      const voteCounts: Record<string, number> = {}
-      votesData?.forEach(v => {
-        if (v.candidate_id) {
-          voteCounts[v.candidate_id] = (voteCounts[v.candidate_id] || 0) + 1
-        }
-      })
-
-      // Jika targetWinnerId belum diset di admin settings, tentukan otomatis dari perolehan suara terbanyak
-      if (!targetWinnerId) {
-        const sortedCandidateIds = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])
-        if (sortedCandidateIds.length > 0) {
-          targetWinnerId = sortedCandidateIds[0][0]
-        }
-      }
-
-      // 3. Ambil data kandidat pemenang
-      let winningCandidate: any = null
-      if (targetWinnerId) {
-        const { data: candidateData } = await supabaseClient
-          .from('candidates')
-          .select('*')
-          .eq('id', targetWinnerId)
-          .single()
-        winningCandidate = candidateData
-      }
-
-      // Fallback ke kandidat pertama jika belum ada data vote sama sekali
-      if (!winningCandidate) {
-        const { data: firstCandidate } = await supabaseClient
-          .from('candidates')
-          .select('*')
-          .order('candidate_number')
-          .limit(1)
-          .single()
-        winningCandidate = firstCandidate
-      }
-
-      if (winningCandidate) {
-        const candidateVotes = voteCounts[winningCandidate.id] || 0
-        const percentage = totalVotes > 0 ? Number(((candidateVotes / totalVotes) * 100).toFixed(1)) : 0
-
-        setWinner({
-          ...winningCandidate,
-          voteCount: candidateVotes,
-          percentage,
-          totalVotes
-        })
-        setShowWinner(true)
-        setIsModalOpen(true) // Otomatis munculkan pop up saat pengumuman selesai!
-      } else {
-        setIsAnnouncementActive(false)
-      }
-    } catch (error) {
-      console.error('Error fetching winner:', error)
-      setIsAnnouncementActive(false)
-    }
-  }
 
   function getCurrentPeriod() {
     const currentYear = new Date().getFullYear()
@@ -339,7 +351,7 @@ export default function WinnerAnnouncement({ announcementTime, winnerId }: Winne
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
+              onClick={handleCloseModal}
               className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
             />
 
@@ -373,7 +385,7 @@ export default function WinnerAnnouncement({ announcementTime, winnerId }: Winne
               {/* Tombol Tutup X */}
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleCloseModal}
                 className="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors"
                 aria-label="Tutup Pengumuman"
               >
@@ -414,6 +426,7 @@ export default function WinnerAnnouncement({ announcementTime, winnerId }: Winne
                         src={winner.ketua_photo_url}
                         alt={winner.ketua_name}
                         fill
+                        sizes="(max-width: 640px) 40vw, 200px"
                         className="object-cover"
                       />
                     ) : (
@@ -439,6 +452,7 @@ export default function WinnerAnnouncement({ announcementTime, winnerId }: Winne
                         src={winner.wakil_photo_url}
                         alt={winner.wakil_name}
                         fill
+                        sizes="(max-width: 640px) 40vw, 200px"
                         className="object-cover"
                       />
                     ) : (
@@ -494,7 +508,7 @@ export default function WinnerAnnouncement({ announcementTime, winnerId }: Winne
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={handleCloseModal}
                   className="inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 transition-all border border-slate-200/80"
                 >
                   Tutup

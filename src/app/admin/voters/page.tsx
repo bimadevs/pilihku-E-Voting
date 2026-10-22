@@ -1,14 +1,36 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { supabaseClient } from '@/lib/auth'
 import { resetDeviceLockByVoterId } from '@/lib/deviceFingerprint'
-import { toast } from 'react-hot-toast'
-import Papa from 'papaparse'
-import * as XLSX from 'xlsx'
-import { Spinner } from '@/app/admin/voters/components/spinner'
-import { CheckCircle, AlertCircle, XCircle, Unlock } from 'lucide-react'
+import { showAdminToast } from '@/app/admin/components/AdminToast'
 import { ConfirmationDialog } from './components/ConfirmationDialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import * as XLSX from 'xlsx'
+import { 
+  Users, 
+  UserCheck, 
+  Clock, 
+  Search, 
+  Plus, 
+  UploadCloud, 
+  Download, 
+  Trash2, 
+  Unlock, 
+  Smartphone, 
+  CheckCircle2, 
+  AlertCircle, 
+  ChevronLeft, 
+  ChevronRight, 
+  Filter, 
+  X, 
+  FileSpreadsheet, 
+  Edit3, 
+  Check, 
+  Loader2,
+  ShieldCheck,
+  RotateCcw
+} from 'lucide-react'
 
 interface Voter {
   id: string
@@ -24,191 +46,85 @@ interface ExcelVoter {
   class: string
 }
 
-// Custom Toast Component
-const CustomToast = ({ message, type }: { message: string, type: 'success' | 'error' | 'info' }) => {
-  const icons = {
-    success: <CheckCircle className="w-5 h-5 text-green-500" />,
-    error: <XCircle className="w-5 h-5 text-red-500" />,
-    info: <AlertCircle className="w-5 h-5 text-blue-500" />
-  }
-
-  const bgColors = {
-    success: 'bg-green-50 border-green-200',
-    error: 'bg-red-50 border-red-200',
-    info: 'bg-blue-50 border-blue-200'
-  }
-
-  return (
-    <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border ${bgColors[type]}`}>
-      {icons[type]}
-      <span className="text-gray-700">{message}</span>
-    </div>
-  )
-}
-
-// Fungsi helper untuk menampilkan toast
-const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-  toast.custom((t: { visible: boolean }) => (
-    <CustomToast message={message} type={type} />
-  ), {
-    duration: 3000,
-    position: 'top-center'
-  })
-}
-
 export default function VotersPage() {
   const [voters, setVoters] = useState<Voter[]>([])
   const [lockedVoterIds, setLockedVoterIds] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [isImporting, setIsImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [formData, setFormData] = useState({
-    nis: '',
-    full_name: '',
-    class: ''
-  })
-  const [currentPage, setCurrentPage] = useState(1)
+
+  // Filters & Search
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'voted' | 'not_voted'>('all')
   const [filterClass, setFilterClass] = useState('')
-  const [sortBy, setSortBy] = useState<'nis' | 'name' | 'class'>('name')
-  const [selectedVoters, setSelectedVoters] = useState<string[]>([])
-  
-  const ITEMS_PER_PAGE = 20
+  const [sortBy, setSortBy] = useState<'name' | 'nis' | 'class'>('name')
 
-  // State untuk dialog konfirmasi delete
-  const [confirmDialog, setConfirmDialog] = useState({
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(25)
+
+  // Selection
+  const [selectedVoters, setSelectedVoters] = useState<string[]>([])
+
+  // Modal: Tambah Pemilih
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [addForm, setAddForm] = useState({ nis: '', full_name: '', class: '' })
+  const [isAdding, setIsAdding] = useState(false)
+
+  // Modal: Edit Pemilih
+  const [editingVoter, setEditingVoter] = useState<Voter | null>(null)
+  const [editForm, setEditForm] = useState({ nis: '', full_name: '', class: '' })
+  const [isEditing, setIsEditing] = useState(false)
+
+  // Modal: Import Excel
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importStats, setImportStats] = useState<{ totalRows: number } | null>(null)
+
+  // Confirmation Dialog
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    type: 'single' | 'multiple' | 'all'
+    id: string
+    count: number
+    title: string
+    message: string
+  }>({
     isOpen: false,
-    type: 'single' as 'single' | 'multiple' | 'all',
+    type: 'single',
     id: '',
-    count: 0
+    count: 0,
+    title: '',
+    message: '',
   })
 
-  // State untuk dialog konfirmasi reset perangkat
+  // Reset Device Dialog
   const [resetDeviceDialog, setResetDeviceDialog] = useState<{
     isOpen: boolean
     voter: Voter | null
   }>({
     isOpen: false,
-    voter: null
+    voter: null,
   })
 
   useEffect(() => {
     fetchVoters()
   }, [])
 
-  // Tambahkan event listener untuk keyboard shortcut
+  // Keyboard shortcut delete
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Delete' && selectedVoters.length > 0 && !loading) {
-        handleDeleteSelected()
+        openBulkDeleteConfirm()
       }
     }
-
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedVoters, loading])
 
-  // Fungsi untuk memvalidasi data Excel
-  function validateExcelData(data: ExcelVoter): string | null {
-    if (!data.nis) return 'NIS tidak boleh kosong'
-    if (!data.full_name) return 'Nama lengkap tidak boleh kosong'
-    if (!data.class) return 'Kelas tidak boleh kosong'
-    return null
-  }
-
-  // Fungsi untuk menghandle import Excel
-  async function handleExcelImport(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setIsImporting(true)
-    let successCount = 0
-    let duplicateCount = 0
-    let errorCount = 0
-
-    try {
-      const arrayBuffer = await file.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
-      
-      // Ambil worksheet pertama
-      const worksheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[worksheetName]
-      
-      // Convert ke JSON dengan header
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
-      
-      // Skip header row dan process data
-      const dataRows = jsonData.slice(1) as string[][]
-      
-      for (const row of dataRows) {
-        // Skip empty rows
-        if (!row || row.length === 0 || !row[0]) continue
-        
-        // Map Excel columns to our data structure
-        // Template: ['NIS', 'Nama Lengkap', 'Kelas']
-        const rowData: ExcelVoter = {
-          nis: String(row[0] || '').trim(),
-          full_name: String(row[1] || '').trim(),
-          class: String(row[2] || '').trim()
-        }
-
-        const validationError = validateExcelData(rowData)
-        if (validationError) {
-          console.error(`Baris dengan NIS ${rowData.nis}: ${validationError}`)
-          errorCount++
-          continue
-        }
-
-        try {
-          // Cek duplikat NIS
-          const { data: existingVoter } = await supabaseClient
-            .from('voters')
-            .select('id')
-            .eq('nis', rowData.nis)
-            .maybeSingle()
-
-          if (existingVoter) {
-            console.log(`NIS ${rowData.nis} sudah terdaftar`)
-            duplicateCount++
-            continue
-          }
-
-          const { error } = await supabaseClient
-            .from('voters')
-            .insert([{
-              nis: rowData.nis,
-              full_name: rowData.full_name,
-              class: rowData.class,
-              has_voted: false
-            }])
-
-          if (error) throw error
-          successCount++
-        } catch (error) {
-          console.error(`Error importing row ${rowData.nis}:`, error)
-          errorCount++
-        }
-      }
-
-      // Tampilkan notifikasi hasil import
-      showNotification(
-        `Import selesai: ${successCount} berhasil, ${duplicateCount} duplikat, ${errorCount} gagal`,
-        successCount > 0 ? 'success' : 'error'
-      )
-      
-      await fetchVoters()
-    } catch (error) {
-      console.error('Error importing Excel:', error)
-      showNotification('File Excel tidak valid atau terjadi kesalahan', 'error')
-    } finally {
-      setIsImporting(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-  }
-
   async function fetchVoters() {
     try {
+      setLoading(true)
       const { data, error } = await supabaseClient
         .from('voters')
         .select('*')
@@ -217,7 +133,7 @@ export default function VotersPage() {
       if (error) throw error
       setVoters(data || [])
 
-      // Ambil daftar perangkat terkunci untuk pemilih
+      // Fetch locked devices
       const { data: devicesData, error: devicesError } = await supabaseClient
         .from('voted_devices')
         .select('voter_id')
@@ -225,697 +141,1024 @@ export default function VotersPage() {
       if (!devicesError && devicesData) {
         setLockedVoterIds(new Set(devicesData.map((d: { voter_id: string }) => d.voter_id)))
       }
-    } catch (error) {
-      console.error('Error:', error)
-      toast.error('Gagal memuat data pemilih')
-    }
-  }
-
-  async function handleConfirmResetDevice() {
-    if (!resetDeviceDialog.voter) return
-    setLoading(true)
-
-    try {
-      const res = await resetDeviceLockByVoterId(resetDeviceDialog.voter.id)
-      if (!res.success) throw new Error(res.error)
-
-      showNotification(`Kunci perangkat untuk ${resetDeviceDialog.voter.full_name} berhasil direset. HP kini dapat dipakai siswa lain.`, 'success')
-      setResetDeviceDialog({ isOpen: false, voter: null })
-      await fetchVoters()
-    } catch (err: any) {
-      console.error('Error resetting device lock:', err)
-      showNotification(err?.message || 'Gagal mereset kunci perangkat', 'error')
+    } catch (error: any) {
+      console.error('Error fetching voters:', error)
+      showAdminToast('Gagal memuat DPT', 'error', error?.message)
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  // 1. Tambah Pemilih Tunggal
+  async function handleAddVoter(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
+    setIsAdding(true)
 
     try {
-      const nis = formData.nis.trim()
-      const fullName = formData.full_name.trim()
-      const voterClass = formData.class.trim()
+      const nis = addForm.nis.trim()
+      const fullName = addForm.full_name.trim()
+      const voterClass = addForm.class.trim()
 
       if (!nis || !fullName || !voterClass) {
-        showNotification('Semua data pemilih (NIS, Nama Lengkap, Kelas) wajib diisi', 'error')
-        return
+        throw new Error('NIS, Nama Lengkap, dan Kelas wajib diisi')
       }
 
-      // Verifikasi sesi admin aktif
-      const { data: { session } } = await supabaseClient.auth.getSession()
-      if (!session) {
-        showNotification('Sesi admin telah berakhir. Silakan login kembali.', 'error')
-        return
-      }
-
-      const { error } = await supabaseClient
+      // Check existing NIS
+      const { data: existing } = await supabaseClient
         .from('voters')
-        .insert([{
+        .select('id')
+        .eq('nis', nis)
+        .maybeSingle()
+
+      if (existing) {
+        throw new Error(`NIS ${nis} sudah terdaftar dalam sistem`)
+      }
+
+      const { error } = await supabaseClient.from('voters').insert([
+        {
           nis,
           full_name: fullName,
           class: voterClass,
-          has_voted: false
-        }])
+          has_voted: false,
+        },
+      ])
 
       if (error) throw error
 
-      showNotification('Pemilih berhasil ditambahkan', 'success')
-      await fetchVoters()
-      setFormData({ nis: '', full_name: '', class: '' })
-    } catch (error: any) {
-      console.error('Error in handleSubmit:', error)
-      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
-        showNotification('Akses ditolak (RLS): Tabel "voters" belum memiliki policy INSERT untuk admin di Supabase SQL Editor.', 'error')
-      } else if (error?.code === '23505' || error?.message?.toLowerCase().includes('unique constraint') || error?.message?.includes('voters_nis_key')) {
-        showNotification(`NIS ${formData.nis} sudah terdaftar. Gunakan NIS lain.`, 'error')
-      } else {
-        showNotification(error?.message || 'Gagal menambahkan pemilih', 'error')
-      }
+      showAdminToast('Pemilih Ditambahkan', 'success', `${fullName} (${nis}) berhasil didaftarkan.`)
+      setIsAddModalOpen(false)
+      setAddForm({ nis: '', full_name: '', class: '' })
+      fetchVoters()
+    } catch (err: any) {
+      showAdminToast('Gagal Menambah Pemilih', 'error', err?.message)
     } finally {
-      setLoading(false)
+      setIsAdding(false)
     }
   }
 
-  // 3. Modifikasi fungsi handleDelete
-  async function handleDelete(id: string) {
-    setConfirmDialog({
-      isOpen: true,
-      type: 'single',
-      id,
-      count: 1
-    })
+  // 2. Edit Pemilih
+  function openEditModal(voter: Voter) {
+    setEditingVoter(voter)
+    setEditForm({ nis: voter.nis, full_name: voter.full_name, class: voter.class })
   }
 
-  // 4. Modifikasi fungsi handleDeleteSelected
-  async function handleDeleteSelected() {
-    if (!selectedVoters.length) return
-    
-    setConfirmDialog({
-      isOpen: true,
-      type: 'multiple',
-      id: '',
-      count: selectedVoters.length
-    })
-  }
+  async function handleEditVoter(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingVoter) return
+    setIsEditing(true)
 
-  // 5. Modifikasi fungsi handleDeleteAll
-  async function handleDeleteAll() {
-    setConfirmDialog({
-      isOpen: true,
-      type: 'all',
-      id: '',
-      count: voters.length
-    })
-  }
-
-  // 6. Tambahkan fungsi handleConfirmDelete
-  async function handleConfirmDelete() {
-    setLoading(true)
-    
     try {
-      if (confirmDialog.type === 'single') {
-        // Hapus votes terkait
-        await supabaseClient
-          .from('votes')
-          .delete()
-          .eq('voter_id', confirmDialog.id)
+      const { error } = await supabaseClient
+        .from('voters')
+        .update({
+          nis: editForm.nis.trim(),
+          full_name: editForm.full_name.trim(),
+          class: editForm.class.trim(),
+        })
+        .eq('id', editingVoter.id)
 
-        // Hapus voter
-        const { error } = await supabaseClient
-          .from('voters')
-          .delete()
-          .eq('id', confirmDialog.id)
+      if (error) throw error
 
-        if (error) throw error
-      } else if (confirmDialog.type === 'multiple') {
-        // Hapus votes terkait
-        await supabaseClient
-          .from('votes')
-          .delete()
-          .in('voter_id', selectedVoters)
+      showAdminToast('Data Diperbarui', 'success', `Data pemilih ${editForm.full_name} berhasil diubah.`)
+      setEditingVoter(null)
+      fetchVoters()
+    } catch (err: any) {
+      showAdminToast('Gagal Memperbarui', 'error', err?.message)
+    } finally {
+      setIsEditing(false)
+    }
+  }
 
-        // Hapus voters
-        const { error } = await supabaseClient
-          .from('voters')
-          .delete()
-          .in('id', selectedVoters)
+  // 3. Import Excel
+  function validateExcelRow(data: ExcelVoter): string | null {
+    if (!data.nis) return 'NIS kosong'
+    if (!data.full_name) return 'Nama kosong'
+    if (!data.class) return 'Kelas kosong'
+    return null
+  }
 
-        if (error) throw error
-        setSelectedVoters([])
-      } else if (confirmDialog.type === 'all') {
-        const { data: allVoters } = await supabaseClient
-          .from('voters')
-          .select('id')
+  async function processExcelFile(file: File) {
+    setIsImporting(true)
+    let successCount = 0
+    let duplicateCount = 0
+    let errorCount = 0
 
-        if (allVoters) {
-          const voterIds = allVoters.map(voter => voter.id)
-          
-          // Hapus votes terkait
-          await supabaseClient
-            .from('votes')
-            .delete()
-            .in('voter_id', voterIds)
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][]
 
-          // Hapus semua voters
-          const { error } = await supabaseClient
-            .from('voters')
-            .delete()
-            .in('id', voterIds)
+      const dataRows = jsonData.slice(1) // Skip header
 
-          if (error) throw error
+      // Ambil semua existing NIS sekaligus agar import sangat cepat
+      const { data: allExisting } = await supabaseClient.from('voters').select('nis')
+      const existingNisSet = new Set((allExisting || []).map((v) => v.nis))
+
+      const rowsToInsert: { nis: string; full_name: string; class: string; has_voted: boolean }[] = []
+
+      for (const row of dataRows) {
+        if (!row || row.length === 0 || !row[0]) continue
+
+        const rowData: ExcelVoter = {
+          nis: String(row[0] || '').trim(),
+          full_name: String(row[1] || '').trim(),
+          class: String(row[2] || '').trim(),
+        }
+
+        if (validateExcelRow(rowData)) {
+          errorCount++
+          continue
+        }
+
+        if (existingNisSet.has(rowData.nis)) {
+          duplicateCount++
+          continue
+        }
+
+        existingNisSet.add(rowData.nis)
+        rowsToInsert.push({
+          nis: rowData.nis,
+          full_name: rowData.full_name,
+          class: rowData.class,
+          has_voted: false,
+        })
+      }
+
+      if (rowsToInsert.length > 0) {
+        // Chunk insert 200 per batch
+        const chunkSize = 200
+        for (let i = 0; i < rowsToInsert.length; i += chunkSize) {
+          const chunk = rowsToInsert.slice(i, i + chunkSize)
+          const { error: insertErr } = await supabaseClient.from('voters').insert(chunk)
+          if (insertErr) {
+            console.error('Chunk insert error:', insertErr)
+            errorCount += chunk.length
+          } else {
+            successCount += chunk.length
+          }
         }
       }
 
-      showNotification(
-        `${confirmDialog.type === 'all' 
-          ? 'Semua data' 
-          : confirmDialog.type === 'multiple'
-          ? `${confirmDialog.count} data`
-          : 'Data'} pemilih berhasil dihapus`, 
-        'success'
+      showAdminToast(
+        'Import Selesai',
+        successCount > 0 ? 'success' : 'warning',
+        `${successCount} pemilih berhasil diimport, ${duplicateCount} duplikat dilewati, ${errorCount} gagal.`
       )
-    } catch (error: any) {
-      console.error('Error in handleConfirmDelete:', error)
-      if (error?.code === '42501' || error?.message?.toLowerCase().includes('violates row-level security')) {
-        showNotification('Akses ditolak (RLS): Tabel "voters" atau "votes" belum memiliki policy DELETE untuk admin di Supabase SQL Editor.', 'error')
-      } else {
-        showNotification(error?.message || 'Gagal menghapus data pemilih', 'error')
-      }
+
+      setIsImportModalOpen(false)
+      setImportFile(null)
+      fetchVoters()
+    } catch (err: any) {
+      console.error('Import error:', err)
+      showAdminToast('File Tidak Valid', 'error', 'Format berkas Excel tidak sesuai atau rusak.')
     } finally {
-      setLoading(false)
+      setIsImporting(false)
     }
   }
 
-  // Fungsi untuk men-download template Excel
+  // 4. Download Template
   function handleDownloadTemplate() {
     try {
-      // Data template dengan header dan contoh data
       const templateData = [
-        ['NIS', 'Nama Lengkap', 'Kelas'], // Header
+        ['NIS', 'Nama Lengkap', 'Kelas'],
         ['123456', 'Bima Jovanta', 'XII TJKT'],
         ['123444', 'Erik Wong', 'XII TJKT'],
         ['123333', 'Felisitas Alverina', 'XI AKL 2'],
         ['122222', 'Gina Putri', 'XII AKL 1'],
-        ['123453', 'Hendra Prasetyo', 'X AKL 1']
-      ];
+        ['123453', 'Hendra Prasetyo', 'X AKL 1'],
+      ]
 
-      // Buat workbook dan worksheet
-      const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.aoa_to_sheet(templateData);
+      const workbook = XLSX.utils.book_new()
+      const worksheet = XLSX.utils.aoa_to_sheet(templateData)
+      worksheet['!cols'] = [{ width: 16 }, { width: 30 }, { width: 16 }]
 
-      // Set lebar kolom agar lebih rapi
-      worksheet['!cols'] = [
-        { width: 15 }, // NIS
-        { width: 25 }, // Nama Lengkap
-        { width: 15 }  // Kelas
-      ];
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'DPT Siswa')
+      XLSX.writeFile(workbook, 'template_dpt_pilihku.xlsx')
 
-      // Style header (bold)
-      const headerRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:C1');
-      for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
-        if (!worksheet[cellAddress]) continue;
-        worksheet[cellAddress].s = {
-          font: { bold: true },
-          fill: { fgColor: { rgb: "E3F2FD" } }
-        };
-      }
-
-      // Tambahkan worksheet ke workbook
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Pemilih');
-
-      // Download file Excel
-      XLSX.writeFile(workbook, 'template_pemilih.xlsx');
-
-      showNotification('Template Excel berhasil diunduh', 'success')
-    } catch (error) {
-      console.error('Error downloading template:', error);
-      showNotification('Gagal mengunduh template', 'error')
+      showAdminToast('Template Diunduh', 'success', 'Berkas template_dpt_pilihku.xlsx siap diisi.')
+    } catch (err) {
+      console.error('Template error:', err)
+      showAdminToast('Gagal Mengunduh', 'error', 'Tidak dapat membuat berkas template Excel.')
     }
   }
 
-  // Filter dan sort data
-  const filteredVoters = useMemo(() => {
-    return voters.filter(voter => {
-      const matchesSearch = 
-        voter.nis.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        voter.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        voter.class.toLowerCase().includes(searchQuery.toLowerCase())
+  // 5. Reset Kunci Perangkat
+  async function handleConfirmResetDevice() {
+    if (!resetDeviceDialog.voter) return
+    try {
+      const res = await resetDeviceLockByVoterId(resetDeviceDialog.voter.id)
+      if (!res.success) throw new Error(res.error)
 
-      const matchesStatus = 
-        filterStatus === 'all' ? true :
-        filterStatus === 'voted' ? voter.has_voted :
-        !voter.has_voted
+      showAdminToast(
+        'Kunci Perangkat Direset',
+        'success',
+        `Siswa ${resetDeviceDialog.voter.full_name} kini dapat login kembali di perangkat baru.`
+      )
+      setResetDeviceDialog({ isOpen: false, voter: null })
+      fetchVoters()
+    } catch (err: any) {
+      showAdminToast('Gagal Reset Perangkat', 'error', err?.message)
+    }
+  }
 
-      const matchesClass = 
-        filterClass ? voter.class === filterClass : true
-
-      return matchesSearch && matchesStatus && matchesClass
-    }).sort((a, b) => {
-      switch (sortBy) {
-        case 'nis':
-          return a.nis.localeCompare(b.nis)
-        case 'name':
-          return a.full_name.localeCompare(b.full_name)
-        case 'class':
-          return a.class.localeCompare(b.class)
-        default:
-          return 0
-      }
+  // 6. Delete confirmations
+  function openSingleDelete(voter: Voter) {
+    setConfirmDialog({
+      isOpen: true,
+      type: 'single',
+      id: voter.id,
+      count: 1,
+      title: 'Hapus Data Pemilih',
+      message: `Apakah Anda yakin ingin menghapus pemilih ${voter.full_name} (NIS: ${voter.nis})? Suara yang telah diberikan juga akan terhapus.`,
     })
+  }
+
+  function openBulkDeleteConfirm() {
+    if (selectedVoters.length === 0) return
+    setConfirmDialog({
+      isOpen: true,
+      type: 'multiple',
+      id: '',
+      count: selectedVoters.length,
+      title: 'Hapus Pemilih Terpilih',
+      message: `Apakah Anda yakin ingin menghapus ${selectedVoters.length} pemilih yang telah dicentang? Tindakan ini tidak dapat dibatalkan.`,
+    })
+  }
+
+  function openClearAllConfirm() {
+    if (voters.length === 0) return
+    setConfirmDialog({
+      isOpen: true,
+      type: 'all',
+      id: '',
+      count: voters.length,
+      title: 'Kosongkan Seluruh DPT',
+      message: 'PERINGATAN: Seluruh data pemilih dan seluruh riwayat suara yang telah masuk akan dihapus bersih dari sistem!',
+    })
+  }
+
+  async function handleExecuteDelete() {
+    try {
+      if (confirmDialog.type === 'single') {
+        await supabaseClient.from('votes').delete().eq('voter_id', confirmDialog.id)
+        const { error } = await supabaseClient.from('voters').delete().eq('id', confirmDialog.id)
+        if (error) throw error
+        showAdminToast('Pemilih Dihapus', 'success', '1 data pemilih berhasil dihapus.')
+      } else if (confirmDialog.type === 'multiple') {
+        await supabaseClient.from('votes').delete().in('voter_id', selectedVoters)
+        const { error } = await supabaseClient.from('voters').delete().in('id', selectedVoters)
+        if (error) throw error
+        showAdminToast('Pemilih Dihapus', 'success', `${selectedVoters.length} data pemilih berhasil dihapus.`)
+        setSelectedVoters([])
+      } else if (confirmDialog.type === 'all') {
+        const { data: all } = await supabaseClient.from('voters').select('id')
+        if (all && all.length > 0) {
+          const ids = all.map((v) => v.id)
+          await supabaseClient.from('votes').delete().in('voter_id', ids)
+          const { error } = await supabaseClient.from('voters').delete().in('id', ids)
+          if (error) throw error
+        }
+        showAdminToast('DPT Dikosongkan', 'success', 'Seluruh data pemilih telah dibersihkan.')
+        setSelectedVoters([])
+      }
+
+      fetchVoters()
+    } catch (err: any) {
+      console.error('Delete error:', err)
+      showAdminToast('Gagal Menghapus', 'error', err?.message)
+    } finally {
+      setConfirmDialog({ isOpen: false, type: 'single', id: '', count: 0, title: '', message: '' })
+    }
+  }
+
+  // Filter & Search computation
+  const filteredVoters = useMemo(() => {
+    return voters
+      .filter((voter) => {
+        const q = searchQuery.toLowerCase()
+        const matchesSearch =
+          voter.nis.toLowerCase().includes(q) ||
+          voter.full_name.toLowerCase().includes(q) ||
+          voter.class.toLowerCase().includes(q)
+
+        const matchesStatus =
+          filterStatus === 'all'
+            ? true
+            : filterStatus === 'voted'
+            ? voter.has_voted
+            : !voter.has_voted
+
+        const matchesClass = filterClass ? voter.class === filterClass : true
+
+        return matchesSearch && matchesStatus && matchesClass
+      })
+      .sort((a, b) => {
+        if (sortBy === 'nis') return a.nis.localeCompare(b.nis)
+        if (sortBy === 'class') return a.class.localeCompare(b.class)
+        return a.full_name.localeCompare(b.full_name)
+      })
   }, [voters, searchQuery, filterStatus, filterClass, sortBy])
 
-  // Get unique classes for filter dropdown
+  // Extract unique classes
   const uniqueClasses = useMemo(() => {
-    return Array.from(new Set(voters.map(voter => voter.class))).sort()
+    return Array.from(new Set(voters.map((v) => v.class))).sort()
   }, [voters])
 
-  // Pagination
-  const totalPages = Math.ceil(filteredVoters.length / ITEMS_PER_PAGE)
-  const paginatedVoters = filteredVoters.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  )
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredVoters.length / itemsPerPage))
+  const paginatedVoters = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredVoters.slice(start, start + itemsPerPage)
+  }, [filteredVoters, currentPage, itemsPerPage])
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, filterStatus, filterClass])
+  }, [searchQuery, filterStatus, filterClass, itemsPerPage])
 
-  // Fungsi untuk menangani select/deselect semua
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedVoters(paginatedVoters.map(voter => voter.id))
+  // Bulk selection helpers
+  const isAllPaginatedSelected =
+    paginatedVoters.length > 0 && paginatedVoters.every((v) => selectedVoters.includes(v.id))
+
+  const handleToggleSelectAll = () => {
+    if (isAllPaginatedSelected) {
+      const pageIds = new Set(paginatedVoters.map((v) => v.id))
+      setSelectedVoters((prev) => prev.filter((id) => !pageIds.has(id)))
     } else {
-      setSelectedVoters([])
+      const newIds = paginatedVoters.map((v) => v.id)
+      setSelectedVoters((prev) => Array.from(new Set([...prev, ...newIds])))
     }
   }
 
-  // Fungsi untuk menangani select/deselect individual
-  const handleSelectVoter = (voterId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedVoters(prev => [...prev, voterId])
-    } else {
-      setSelectedVoters(prev => prev.filter(id => id !== voterId))
-    }
+  const handleToggleSelectOne = (id: string) => {
+    setSelectedVoters((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
   }
 
-  //  fungsi handle select untuk  row click
-  const handleRowClick = (voterId: string) => {
-    if (selectedVoters.includes(voterId)) {
-      setSelectedVoters(prev => prev.filter(id => id !== voterId))
-    } else {
-      setSelectedVoters(prev => [...prev, voterId])
-    }
-  }
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-    </div>
-  )
+  // Summary counts
+  const totalVotersCount = voters.length
+  const votedCount = voters.filter((v) => v.has_voted).length
+  const notVotedCount = totalVotersCount - votedCount
+  const lockedCount = lockedVoterIds.size
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between mb-12">
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            Kelola Pemilih
-          </h1>
+    <div className="space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Daftar Pemilih Tetap (DPT)
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
+              {totalVotersCount} Siswa
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            Kelola data pemilih sah, import massal berkas Excel, verifikasi status mencoblos, dan kendali kunci perangkat.
+          </p>
         </div>
 
-        {/* Form Import CSV dengan Loading yang Lebih Jelas */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-6 transform hover:scale-[1.01] transition-all duration-200">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-800">Import Data Pemilih</h2>
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-4">
-              <button
-                onClick={handleDownloadTemplate}
-                className="bg-green-500 text-white py-2 px-4 rounded-xl hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
-                disabled={isImporting}
-              >
-                Download Template Excel
-              </button>
-              <div className="flex-1">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept=".xlsx,.xls"
-                  onChange={handleExcelImport}
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-xl file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100
-                    cursor-pointer
-                    disabled:opacity-50"
-                  disabled={isImporting}
-                />
-              </div>
-            </div>
-            
-            {/* Loading Indicator yang Lebih Jelas */}
-            {isImporting && (
-              <div className="flex items-center justify-center gap-3 p-4 bg-blue-50 rounded-xl">
-                <Spinner className="w-5 h-5 text-blue-600" />
-                <span className="text-blue-600 font-medium">
-                  Sedang mengimpor data pemilih...
-                </span>
-              </div>
-            )}
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={handleDownloadTemplate}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl shadow-xs transition-colors"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Unduh Template</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl shadow-xs transition-colors"
+          >
+            <UploadCloud className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Import Excel / CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Pemilih</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Metrics Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-xs">
+          <span className="text-xs font-medium text-slate-500">Total DPT</span>
+          <div className="text-xl sm:text-2xl font-extrabold text-slate-900 font-mono mt-1">
+            {totalVotersCount.toLocaleString('id-ID')}
           </div>
         </div>
 
-        {/* Form Tambah Pemilih */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-10 transform hover:scale-[1.01] transition-all duration-200">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-800">Tambah Pemilih Baru</h2>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  NIS
-                </label>
-                <input
-                  type="text"
-                  value={formData.nis}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    nis: e.target.value
-                  }))}
-                  className="w-full px-1 py-2 border rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                  required
-                  placeholder="Contoh: 1234567890"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Lengkap
-                </label>
-                <input
-                  type="text"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    full_name: e.target.value
-                  }))}
-                  className="w-full px-1 py-2 border rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                  required
-                  placeholder="Contoh: Nama Lengkap"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Kelas
-                </label>
-                <input
-                  type="text"
-                  value={formData.class}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    class: e.target.value
-                  }))}
-                  className="w-full px-1 py-2 border rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
-                  required
-                  placeholder="Contoh: XII TJKT"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-4 rounded-xl hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:from-blue-300 disabled:to-blue-400 transition-all duration-200 shadow-lg hover:shadow-xl"
-            >
-              {loading ? 'Menyimpan...' : 'Tambah Pemilih'}
-            </button>
-          </form>
+        <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-emerald-600">Sudah Memilih</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          </div>
+          <div className="text-xl sm:text-2xl font-extrabold text-emerald-600 font-mono mt-1">
+            {votedCount.toLocaleString('id-ID')}{' '}
+            <span className="text-xs font-bold text-emerald-700">
+              ({totalVotersCount > 0 ? ((votedCount / totalVotersCount) * 100).toFixed(1) : 0}%)
+            </span>
+          </div>
         </div>
 
-        {/* Filter dan Search dengan Counter */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div>
-              <input
-                type="text"
-                placeholder="Cari NIS, nama, atau kelas..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 rounded-xl border border-gray-200"
-              />
-            </div>
-            
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as 'all' | 'voted' | 'not_voted')}
-              className="px-4 py-2 rounded-xl border border-gray-200"
-            >
-              <option value="all">Semua Status</option>
-              <option value="voted">Sudah Memilih</option>
-              <option value="not_voted">Belum Memilih</option>
-            </select>
+        <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-amber-600">Belum Memilih</span>
+            <Clock className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="text-xl sm:text-2xl font-extrabold text-slate-900 font-mono mt-1">
+            {notVotedCount.toLocaleString('id-ID')}
+          </div>
+        </div>
 
+        <div className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-blue-600">Perangkat Terkunci</span>
+            <Smartphone className="w-4 h-4 text-blue-500" />
+          </div>
+          <div className="text-xl sm:text-2xl font-extrabold text-slate-900 font-mono mt-1">
+            {lockedCount.toLocaleString('id-ID')}
+          </div>
+        </div>
+      </div>
+
+      {/* Unified Action & Filter Toolbar */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          {/* Search bar */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari berdasarkan NIS, Nama Siswa, atau Kelas..."
+              className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Pills & Selects */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status Pills */}
+            <div className="p-1 bg-slate-100 rounded-xl flex items-center gap-1 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setFilterStatus('all')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  filterStatus === 'all'
+                    ? 'bg-white text-slate-900 shadow-xs font-bold'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Semua ({totalVotersCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterStatus('voted')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  filterStatus === 'voted'
+                    ? 'bg-white text-emerald-700 shadow-xs font-bold'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Sudah ({votedCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterStatus('not_voted')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  filterStatus === 'not_voted'
+                    ? 'bg-white text-amber-700 shadow-xs font-bold'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Belum ({notVotedCount})
+              </button>
+            </div>
+
+            {/* Kelas dropdown */}
             <select
               value={filterClass}
               onChange={(e) => setFilterClass(e.target.value)}
-              className="px-4 py-2 rounded-xl border border-gray-200"
+              className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-700 font-medium"
             >
-              <option value="">Semua Kelas</option>
-              {uniqueClasses.map(className => (
-                <option key={className} value={className}>{className}</option>
+              <option value="">Semua Kelas ({uniqueClasses.length})</option>
+              {uniqueClasses.map((cls) => (
+                <option key={cls} value={cls}>
+                  Kelas {cls}
+                </option>
               ))}
             </select>
 
+            {/* Sort dropdown */}
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'nis' | 'name' | 'class')}
-              className="px-4 py-2 rounded-xl border border-gray-200"
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-700 font-medium"
             >
-              <option value="name">Urutkan: Nama</option>
-              <option value="nis">Urutkan: NIS</option>
-              <option value="class">Urutkan: Kelas</option>
+              <option value="name">Urut: Nama A-Z</option>
+              <option value="nis">Urut: NIS</option>
+              <option value="class">Urut: Kelas</option>
             </select>
+          </div>
+        </div>
 
-            {/* Counter Hasil Filter */}
-            <div className="px-4 py-2 bg-gray-50 rounded-xl text-sm text-gray-600 flex items-center justify-center">
-              <span>
-                {filterStatus === 'all' ? 'Total' : 
-                 filterStatus === 'voted' ? 'Sudah Memilih' : 
-                 'Belum Memilih'}: {filteredVoters.length} pemilih
-                {filterClass && ` di kelas ${filterClass}`}
-                {searchQuery && ` (hasil pencarian)`}
-              </span>
+        {/* Bulk Action Sticky Bar when items are selected */}
+        {selectedVoters.length > 0 && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs animate-in fade-in-0">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-blue-900">{selectedVoters.length} pemilih terpilih</span>
+              <span className="text-slate-400">•</span>
+              <button
+                type="button"
+                onClick={() => setSelectedVoters([])}
+                className="text-blue-700 hover:underline font-medium"
+              >
+                Batalkan pilihan
+              </button>
             </div>
-          </div>
-        </div>
 
-        {/* Tombol Delete All dan Delete Selected */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <div className="flex gap-4">
             <button
-              onClick={handleDeleteAll}
-              className="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors duration-200"
-              disabled={loading || voters.length === 0}
+              type="button"
+              onClick={openBulkDeleteConfirm}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition-colors"
             >
-              Hapus Semua Data
-            </button>
-            <button
-              onClick={handleDeleteSelected}
-              className="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors duration-200"
-              disabled={loading || selectedVoters.length === 0}
-            >
-              Hapus {selectedVoters.length} Data Terpilih
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Hapus {selectedVoters.length} Pemilih Terpilih</span>
             </button>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Daftar Pemilih */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+      {/* High-Performance Data Table */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider font-bold">
+                <th className="py-3.5 px-4 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllPaginatedSelected}
+                    onChange={handleToggleSelectAll}
+                    aria-label="Pilih semua pemilih di halaman ini"
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
+                <th className="py-3.5 px-4 font-bold">NIS</th>
+                <th className="py-3.5 px-4 font-bold">Nama Lengkap Siswa</th>
+                <th className="py-3.5 px-4 font-bold">Kelas</th>
+                <th className="py-3.5 px-4 font-bold">Status Coblos</th>
+                <th className="py-3.5 px-4 font-bold">Keamanan Perangkat</th>
+                <th className="py-3.5 px-4 text-right font-bold">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {paginatedVoters.length > 0 && (
-                      <input
-                        type="checkbox"
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        checked={paginatedVoters.length > 0 && selectedVoters.length === paginatedVoters.length}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                    )}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    NIS
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nama
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Kelas
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Kunci Perangkat
-                  </th>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
+                    <span>Memuat data pemilih...</span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedVoters.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                      Tidak ada data pemilih
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedVoters.map((voter) => (
-                    <tr 
-                      key={voter.id} 
-                      onClick={() => handleRowClick(voter.id)}
-                      className={`
-                        hover:bg-gray-50 transition-colors cursor-pointer
-                        ${selectedVoters.includes(voter.id) ? 'bg-blue-50' : ''}
-                      `}
+              ) : paginatedVoters.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    Tidak ditemukan data pemilih yang cocok dengan filter atau kata kunci.
+                  </td>
+                </tr>
+              ) : (
+                paginatedVoters.map((voter) => {
+                  const isSelected = selectedVoters.includes(voter.id)
+                  const isDeviceLocked = lockedVoterIds.has(voter.id)
+
+                  return (
+                    <tr
+                      key={voter.id}
+                      className={`hover:bg-slate-50/80 transition-colors ${
+                        isSelected ? 'bg-blue-50/40' : ''
+                      }`}
                     >
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()} // Prevent row click when clicking checkbox
-                      >
+                      <td className="py-3 px-4 text-center">
                         <input
                           type="checkbox"
-                          checked={selectedVoters.includes(voter.id)}
-                          onChange={(e) => handleSelectVoter(voter.id, e.target.checked)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectOne(voter.id)}
+                          aria-label={`Pilih ${voter.full_name}`}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                         />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{voter.nis}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{voter.full_name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{voter.class}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium
-                          ${voter.has_voted
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                          }`}
-                        >
-                          {voter.has_voted ? 'Sudah Memilih' : 'Belum Memilih'}
+
+                      <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                        {voter.nis}
+                      </td>
+
+                      <td className="py-3 px-4 font-semibold text-slate-900">
+                        {voter.full_name}
+                      </td>
+
+                      <td className="py-3 px-4">
+                        <span className="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200/60 font-mono text-slate-700 font-semibold">
+                          {voter.class}
                         </span>
                       </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap text-center text-sm"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {lockedVoterIds.has(voter.id) ? (
-                          <button
-                            type="button"
-                            onClick={() => setResetDeviceDialog({ isOpen: true, voter })}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors shadow-sm"
-                            title="Buka kunci perangkat agar HP bisa digunakan oleh siswa lain"
-                          >
-                            <Unlock className="w-3.5 h-3.5" />
-                            <span>Reset Kunci HP</span>
-                          </button>
+
+                      <td className="py-3 px-4">
+                        {voter.has_voted ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[11px]">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>Sudah Memilih</span>
+                          </span>
                         ) : (
-                          <span className="text-xs text-gray-400 font-normal">
-                            -
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-500 font-medium text-[11px]">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Belum Memilih</span>
                           </span>
                         )}
                       </td>
+
+                      <td className="py-3 px-4">
+                        {isDeviceLocked ? (
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-blue-700 font-medium text-[11px]">
+                              <Smartphone className="w-3 h-3 text-blue-500" />
+                              <span>Terkunci HP</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setResetDeviceDialog({ isOpen: true, voter })}
+                              className="p-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                              title="Reset Kunci Perangkat (Buka gembok agar bisa login di HP lain)"
+                            >
+                              <Unlock className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 font-mono">-</span>
+                        )}
+                      </td>
+
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(voter)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Edit Data Pemilih"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openSingleDelete(voter)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Hapus Pemilih"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Footer */}
+        <div className="p-4 bg-slate-50 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <span>
+              Menampilkan {filteredVoters.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} -{' '}
+              {Math.min(currentPage * itemsPerPage, filteredVoters.length)} dari {filteredVoters.length} pemilih
+            </span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="ml-2 px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-700 font-medium"
+            >
+              <option value={15}>15 baris</option>
+              <option value={25}>25 baris</option>
+              <option value={50}>50 baris</option>
+              <option value={100}>100 baris</option>
+            </select>
           </div>
 
-          {/* Pagination - hanya tampil jika ada data dan lebih dari 1 halaman */}
-          {filteredVoters.length > ITEMS_PER_PAGE && (
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Menampilkan {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredVoters.length)} dari {filteredVoters.length} data
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
-                  >
-                    Sebelumnya
-                  </button>
-                  <div className="flex items-center gap-2">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-4 py-2 rounded-xl ${
-                          currentPage === page
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 hover:bg-gray-200'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
-                  >
-                    Selanjutnya
-                  </button>
-                </div>
+          <div className="flex items-center gap-1.5 self-center sm:self-auto">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors"
+              title="Halaman Sebelumnya"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="px-3 py-1 font-semibold text-slate-800 font-mono">
+              Hal {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors"
+              title="Halaman Berikutnya"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Danger Zone: Clear entire DPT */}
+      {voters.length > 0 && (
+        <div className="p-4 rounded-2xl bg-rose-50/50 border border-rose-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h4 className="text-xs font-bold text-rose-900">Area Bahaya / Reset DPT</h4>
+            <p className="text-xs text-rose-700 mt-0.5">
+              Hapus seluruh daftar pemilih sekaligus jika ingin mengganti DPT untuk periode baru.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={openClearAllConfirm}
+            className="px-3.5 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 border border-rose-300 rounded-xl transition-colors self-start sm:self-auto"
+          >
+            Kosongkan Seluruh DPT ({voters.length})
+          </button>
+        </div>
+      )}
+
+      {/* Modal: Tambah Pemilih */}
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white border border-slate-200 shadow-2xl rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900">
+              Tambah Pemilih Baru
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-1">
+              Daftarkan satu siswa ke dalam Daftar Pemilih Tetap (DPT).
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddVoter} className="space-y-4 mt-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Nomor Induk Siswa (NIS) <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={addForm.nis}
+                onChange={(e) => setAddForm({ ...addForm, nis: e.target.value })}
+                placeholder="Contoh: 123456"
+                className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Nama Lengkap Siswa <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={addForm.full_name}
+                onChange={(e) => setAddForm({ ...addForm, full_name: e.target.value })}
+                placeholder="Contoh: Bima Jovanta"
+                className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Kelas <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={addForm.class}
+                onChange={(e) => setAddForm({ ...addForm, class: e.target.value })}
+                placeholder="Contoh: XII TJKT"
+                className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isAdding}
+                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors disabled:opacity-50"
+              >
+                {isAdding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                <span>Simpan Pemilih</span>
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Edit Pemilih */}
+      <Dialog open={!!editingVoter} onOpenChange={(open) => !open && setEditingVoter(null)}>
+        <DialogContent className="sm:max-w-md bg-white border border-slate-200 shadow-2xl rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900">
+              Edit Data Pemilih
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-1">
+              Perbarui rincian identitas siswa dalam database DPT.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleEditVoter} className="space-y-4 mt-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">NIS</label>
+              <input
+                type="text"
+                required
+                value={editForm.nis}
+                onChange={(e) => setEditForm({ ...editForm, nis: e.target.value })}
+                className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-blue-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap</label>
+              <input
+                type="text"
+                required
+                value={editForm.full_name}
+                onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Kelas</label>
+              <input
+                type="text"
+                required
+                value={editForm.class}
+                onChange={(e) => setEditForm({ ...editForm, class: e.target.value })}
+                className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingVoter(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isEditing}
+                className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs"
+              >
+                {isEditing ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Import Excel / CSV */}
+      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+        <DialogContent className="sm:max-w-lg bg-white border border-slate-200 shadow-2xl rounded-2xl p-6 sm:p-7">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900">
+              Import DPT dari Excel / CSV
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-1">
+              Unggah berkas spreadsheet dengan urutan kolom: <strong>NIS</strong>, <strong>Nama Lengkap</strong>, dan <strong>Kelas</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            {/* File dropzone */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-8 text-center cursor-pointer bg-slate-50/60 hover:bg-blue-50/30 transition-all flex flex-col items-center justify-center gap-3"
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".xlsx, .xls, .csv"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) setImportFile(f)
+                }}
+                className="hidden"
+              />
+              <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                <FileSpreadsheet className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-800">
+                  {importFile ? importFile.name : 'Klik untuk pilih berkas spreadsheet'}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Mendukung .XLSX, .XLS, atau .CSV (Maksimal 10MB)
+                </p>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Tambahkan informasi shortcut */}
-        <div className="mt-4 text-sm text-gray-600">
-          <p>Shortcut: Tekan tombol "Delete" untuk menghapus data yang dipilih</p>
-        </div>
+            {/* Template hint */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-100/70 text-xs">
+              <span className="text-slate-600">Belum memiliki format template?</span>
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="text-blue-600 hover:text-blue-700 font-semibold inline-flex items-center gap-1"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh Contoh Excel</span>
+              </button>
+            </div>
 
-        {/* 7. Tambahkan ConfirmationDialog di akhir sebelum penutup div terakhir */}
-        <ConfirmationDialog
-          isOpen={confirmDialog.isOpen}
-          onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
-          onConfirm={handleConfirmDelete}
-          title={
-            confirmDialog.type === 'all' 
-              ? 'Hapus Semua Data'
-              : confirmDialog.type === 'multiple'
-              ? 'Hapus Data Terpilih'
-              : 'Hapus Data Pemilih'
-          }
-          message={
-            confirmDialog.type === 'all'
-              ? 'Anda yakin ingin menghapus SEMUA data pemilih? Tindakan ini tidak dapat dibatalkan.'
-              : confirmDialog.type === 'multiple'
-              ? 'Anda yakin ingin menghapus data pemilih yang dipilih?'
-              : 'Anda yakin ingin menghapus data pemilih ini?'
-          }
-          type={confirmDialog.type}
-          count={confirmDialog.count}
-        />
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsImportModalOpen(false)
+                  setImportFile(null)
+                }}
+                disabled={isImporting}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={!importFile || isImporting}
+                onClick={() => importFile && processExcelFile(importFile)}
+                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs disabled:opacity-50"
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Mengimpor Data...</span>
+                  </>
+                ) : (
+                  <span>Mulai Import</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-        {/* Dialog Konfirmasi Reset Kunci Perangkat */}
-        <ConfirmationDialog
-          isOpen={resetDeviceDialog.isOpen}
-          onClose={() => setResetDeviceDialog({ isOpen: false, voter: null })}
-          onConfirm={handleConfirmResetDevice}
-          title="Buka Kunci Perangkat"
-          message={`Buka kunci perangkat fisik untuk pemilih ${resetDeviceDialog.voter?.full_name || ''}? HP yang sebelumnya digunakan akan dapat dipakai kembali oleh siswa lain. Hak suara ${resetDeviceDialog.voter?.full_name || ''} tetap tercatat aman di sistem.`}
-          type="reset"
-        />
-      </div>
+      {/* Confirmation Dialog for Delete */}
+      <ConfirmationDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={handleExecuteDelete}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        count={confirmDialog.count}
+      />
+
+      {/* Reset Device Lock Dialog */}
+      <ConfirmationDialog
+        isOpen={resetDeviceDialog.isOpen}
+        onClose={() => setResetDeviceDialog({ isOpen: false, voter: null })}
+        onConfirm={handleConfirmResetDevice}
+        title="Reset Kunci Perangkat"
+        message={`Siswa ${resetDeviceDialog.voter?.full_name} (${resetDeviceDialog.voter?.nis}) saat ini terkunci di HP sebelumnya. Reset kunci ini jika siswa perlu mencoblos lewat perangkat lain atau komputer lab?`}
+        type="reset"
+        confirmText="Buka Kunci HP"
+      />
     </div>
   )
 }

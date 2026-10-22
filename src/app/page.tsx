@@ -22,7 +22,8 @@ import {
   TrendingUp,
   BookOpen,
   Quote,
-  Sparkles
+  Sparkles,
+  Clock
 } from 'lucide-react'
 import { supabaseClient } from '@/lib/auth'
 import WinnerAnnouncement from '@/components/WinnerAnnouncement'
@@ -98,27 +99,36 @@ export default function HomePage() {
   const [votingStats, setVotingStats] = useState<VotingStats | null>(null)
   const [isLoadingStats, setIsLoadingStats] = useState(true)
 
-  useEffect(() => {
-    fetchCandidates()
-    fetchSettings()
-    fetchVotingStats()
+  // Jadwal voting & hitung mundur
+  const [votingSchedule, setVotingSchedule] = useState<{
+    id: string
+    start_time: string
+    end_time: string
+    is_active: boolean
+  } | null>(null)
+  const [scheduleState, setScheduleState] = useState<'loading' | 'live' | 'upcoming' | 'closed' | 'none'>('loading')
+  const [scheduleCountdown, setScheduleCountdown] = useState<string>('')
 
-    // Realtime subscription untuk update suara masuk
-    const channel = supabaseClient
-      .channel('realtime-votes-homepage')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'votes' },
-        () => {
-          fetchVotingStats()
-        }
-      )
-      .subscribe()
+  async function fetchVotingSchedule() {
+    try {
+      const { data, error } = await supabaseClient
+        .from('voting_schedule')
+        .select('*')
+        .eq('is_active', true)
+        .maybeSingle()
 
-    return () => {
-      supabaseClient.removeChannel(channel)
+      if (!error && data) {
+        setVotingSchedule(data)
+      } else {
+        setVotingSchedule(null)
+        setScheduleState('none')
+      }
+    } catch (err) {
+      console.error('Error fetching voting schedule:', err)
+      setVotingSchedule(null)
+      setScheduleState('none')
     }
-  }, [])
+  }
 
   async function fetchSettings() {
     try {
@@ -232,6 +242,73 @@ export default function HomePage() {
     }
   }
 
+  useEffect(() => {
+    fetchCandidates()
+    fetchSettings()
+    fetchVotingStats()
+    fetchVotingSchedule()
+
+    // Realtime subscription untuk update suara masuk
+    const channel = supabaseClient
+      .channel('realtime-votes-homepage')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'votes' },
+        () => {
+          fetchVotingStats()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabaseClient.removeChannel(channel)
+    }
+  }, [])
+
+  // Timer hitung mundur pembukaan bilik suara
+  useEffect(() => {
+    if (!votingSchedule) {
+      if (scheduleState !== 'loading') {
+        setScheduleState('none')
+      }
+      return
+    }
+
+    const currentSchedule = votingSchedule
+
+    function evaluateSchedule() {
+      const now = Date.now()
+      const start = new Date(currentSchedule.start_time).getTime()
+      const end = new Date(currentSchedule.end_time).getTime()
+
+      if (now < start) {
+        setScheduleState('upcoming')
+        const diff = start - now
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+        const pad = (n: number) => String(n).padStart(2, '0')
+        if (days > 0) {
+          setScheduleCountdown(`${days}h ${pad(hours)}j ${pad(minutes)}m ${pad(seconds)}d`)
+        } else {
+          setScheduleCountdown(`${pad(hours)}j ${pad(minutes)}m ${pad(seconds)}d`)
+        }
+      } else if (now >= start && now <= end) {
+        setScheduleState('live')
+        setScheduleCountdown('')
+      } else {
+        setScheduleState('closed')
+        setScheduleCountdown('')
+      }
+    }
+
+    evaluateSchedule()
+    const timer = setInterval(evaluateSchedule, 1000)
+    return () => clearInterval(timer)
+  }, [votingSchedule, scheduleState])
+
   function getProkerHighlights(text: string, count: number = 2): string[] {
     if (!text || !text.trim()) return []
     return text
@@ -284,17 +361,51 @@ export default function HomePage() {
 
           {/* Primary Action Button */}
           <div className="flex items-center gap-2">
-            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200/80 mr-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Bilik Suara Aktif
-            </div>
-            <Link
-              href="/auth/login"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all shadow-xs hover:shadow-sm"
-            >
-              <Vote className="w-4 h-4" />
-              <span>Masuk NIS</span>
-            </Link>
+            {scheduleState === 'live' ? (
+              <>
+                <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200/80 mr-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Bilik Suara Aktif
+                </div>
+                <Link
+                  href="/auth/login"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all shadow-xs hover:shadow-sm"
+                >
+                  <Vote className="w-4 h-4" />
+                  <span>Masuk NIS</span>
+                </Link>
+              </>
+            ) : scheduleState === 'upcoming' ? (
+              <>
+                <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200/80 mr-1">
+                  <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                  <span>Dibuka dlm {scheduleCountdown}</span>
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-amber-900 bg-amber-100/90 border border-amber-300/80 cursor-not-allowed select-none"
+                  title="Bilik suara belum dibuka"
+                >
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  <span>{scheduleCountdown}</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200 mr-1">
+                  <span className="w-2 h-2 rounded-full bg-slate-400" />
+                  Pemilihan Selesai
+                </div>
+                <a
+                  href="#hasil-voting"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all border border-slate-200"
+                >
+                  <BarChart3 className="w-4 h-4 text-slate-500" />
+                  <span>Lihat Hasil</span>
+                </a>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -353,14 +464,33 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.3 }}
                   className="mt-8 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4"
                 >
-                  <Link
-                    href="/auth/login"
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 text-base font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md transition-all duration-150"
-                  >
-                    <Vote className="w-5 h-5" />
-                    <span>Mulai Memilih Sekarang</span>
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </Link>
+                  {scheduleState === 'live' ? (
+                    <Link
+                      href="/auth/login"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 text-base font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md transition-all duration-150"
+                    >
+                      <Vote className="w-5 h-5" />
+                      <span>Mulai Memilih Sekarang</span>
+                      <ArrowRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  ) : scheduleState === 'upcoming' ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 text-base font-bold rounded-xl text-amber-950 bg-amber-100 border border-amber-300 shadow-xs cursor-not-allowed select-none"
+                    >
+                      <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+                      <span>Bilik Suara Dibuka dalam {scheduleCountdown}</span>
+                    </button>
+                  ) : (
+                    <a
+                      href="#hasil-voting"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 text-base font-bold rounded-xl text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-xs transition-all"
+                    >
+                      <CheckCircle2 className="w-5 h-5 text-slate-500" />
+                      <span>Pemilihan Ditutup • Lihat Hasil Suara</span>
+                    </a>
+                  )}
                   <a
                     href="#hasil-voting"
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 text-base font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 transition-all duration-150 border border-slate-200/90 shadow-xs"
@@ -896,13 +1026,29 @@ export default function HomePage() {
                             <span>Visi, Misi & Proker</span>
                           </button>
 
-                          <Link
-                            href="/auth/login"
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all shadow-xs hover:shadow-sm"
-                          >
-                            <Vote className="w-4 h-4" />
-                            <span>Pilih Paslon</span>
-                          </Link>
+                          {scheduleState === 'live' ? (
+                            <Link
+                              href="/auth/login"
+                              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all shadow-xs hover:shadow-sm"
+                            >
+                              <Vote className="w-4 h-4" />
+                              <span>Pilih Paslon</span>
+                            </Link>
+                          ) : scheduleState === 'upcoming' ? (
+                            <button
+                              type="button"
+                              disabled
+                              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-amber-900 bg-amber-100 border border-amber-300/80 cursor-not-allowed select-none"
+                              title="Bilik suara belum dibuka"
+                            >
+                              <Clock className="w-4 h-4 text-amber-600" />
+                              <span>Dibuka {scheduleCountdown}</span>
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-400 font-medium py-2.5 text-center sm:text-right">
+                              Pemilihan Selesai
+                            </span>
+                          )}
                         </div>
                       </div>
                     </article>
@@ -970,13 +1116,32 @@ export default function HomePage() {
               Setiap suara menentukan program kerja, aspirasi, dan kemajuan kegiatan siswa satu tahun ke depan.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link
-                href="/auth/login"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-base font-bold rounded-xl text-slate-900 bg-white hover:bg-slate-100 active:bg-slate-200 shadow-md transition-all"
-              >
-                <Vote className="w-5 h-5 text-blue-600" />
-                <span>Masuk ke Bilik Suara Sekarang</span>
-              </Link>
+              {scheduleState === 'live' ? (
+                <Link
+                  href="/auth/login"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-base font-bold rounded-xl text-slate-900 bg-white hover:bg-slate-100 active:bg-slate-200 shadow-md transition-all"
+                >
+                  <Vote className="w-5 h-5 text-blue-600" />
+                  <span>Masuk ke Bilik Suara Sekarang</span>
+                </Link>
+              ) : scheduleState === 'upcoming' ? (
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-base font-bold rounded-xl text-amber-950 bg-amber-200 border border-amber-400 shadow-md cursor-not-allowed select-none"
+                >
+                  <Clock className="w-5 h-5 text-amber-700 animate-pulse" />
+                  <span>Bilik Suara Dibuka dalam {scheduleCountdown}</span>
+                </button>
+              ) : (
+                <a
+                  href="#hasil-voting"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-base font-bold rounded-xl text-slate-900 bg-white hover:bg-slate-100 shadow-md transition-all"
+                >
+                  <BarChart3 className="w-5 h-5 text-slate-700" />
+                  <span>Lihat Rekapitulasi Suara</span>
+                </a>
+              )}
               <a
                 href="#hasil-voting"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-base font-semibold rounded-xl text-white bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 transition-all"
@@ -1007,13 +1172,28 @@ export default function HomePage() {
               <BarChart3 className="w-3.5 h-3.5" />
               <span>Hasil</span>
             </a>
-            <Link
-              href="/auth/login"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-xs"
-            >
-              <span>Vote</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {scheduleState === 'live' ? (
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-xs"
+              >
+                <span>Vote</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            ) : scheduleState === 'upcoming' ? (
+              <button
+                type="button"
+                disabled
+                className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-not-allowed select-none"
+              >
+                <Clock className="w-3 h-3 text-amber-400 animate-pulse" />
+                <span>{scheduleCountdown}</span>
+              </button>
+            ) : (
+              <span className="px-2 py-2 text-[11px] font-semibold text-slate-500">
+                Tutup
+              </span>
+            )}
           </div>
         </div>
       </div>

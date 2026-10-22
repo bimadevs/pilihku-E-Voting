@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { supabaseClient } from '@/lib/auth'
 import { checkDeviceVoted } from '@/lib/deviceFingerprint'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2, ShieldAlert } from 'lucide-react'
+import { Loader2, ShieldAlert, ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
 import BrandLogo from '@/components/BrandLogo'
 
@@ -99,6 +100,17 @@ export default function VoterLogin() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
+          {/* Back to Home Navigation */}
+          <div className="mb-4">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors group"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
+              <span>Kembali ke Beranda</span>
+            </Link>
+          </div>
+
           {/* Decorative Elements */}
           <div className="absolute top-0 left-0 w-full h-64 overflow-hidden -z-10">
             <div className="absolute w-96 h-96 -top-48 -left-48 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70" />

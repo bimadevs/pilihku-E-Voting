@@ -54,3 +54,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+node_modules/
+# e2e testing artifacts
+.e2e/
+.e2e
